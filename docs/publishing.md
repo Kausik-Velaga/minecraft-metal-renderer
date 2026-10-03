@@ -2,9 +2,13 @@
 
 Prepared October 2, 2026 for the experimental 0.2.0 release. These are maintainer notes, not the public mod description.
 
+## Project name
+
+Use **Minecraft Metal** as the canonical public name in the README, mod metadata, documentation, release titles, and registry listings. The 0.2.0 registry file display name is **Minecraft Metal 0.2.0 - MC 26.3 - Apple Silicon**. Repository names, URL slugs, package identifiers, existing copyright notices, and published artifact filenames are stable identifiers and may retain their original wording.
+
 ## Listing status
 
-- **CurseForge:** project **1723425**, **Metal Renderer**, is awaiting moderator approval. Release file **9043119** is **Under Review**, tagged Alpha / Minecraft 26.3 / Fabric / Client / Java 25, with automatic publication after approval selected. The MIT license, GitHub source, icon, description, and three captioned gameplay images are saved. [Author dashboard](https://authors.curseforge.com/#/projects/1723425/files) · [Listing preview](https://www.curseforge.com/minecraft/mc-mods/metal-renderer/preview). The listing is not yet public. Alpha files are not shown in the CurseForge client and require a direct project link.
+- **CurseForge:** project **1723425**, **Minecraft Metal**, is awaiting moderator approval. Release file **9043119** is **Under Review**, tagged Alpha / Minecraft 26.3 / Fabric / Client / Java 25, with automatic publication after approval selected. The MIT license, GitHub source, icon, description, and three captioned gameplay images are saved. [Author dashboard](https://authors.curseforge.com/#/projects/1723425/files) · [Listing preview](https://www.curseforge.com/minecraft/mc-mods/metal-renderer/preview). The listing is not yet public. Alpha files are not shown in the CurseForge client and require a direct project link.
 - **Nexus Mods:** **[Minecraft Metal — 1362](https://www.nexusmods.com/minecraft/mods/1362)** is published, with one main archive, three gameplay images, **AI-Generated Content** and **AI Media** tags, an external Fabric Loader requirement, and custom permissions containing the MIT license and its scope qualifications. The public description includes the ZIP-specific manual installation instructions. Mod rewards were not enabled.
 
 ## Shared listing material
@@ -33,7 +37,7 @@ These demonstrate the tested rendering, not comparative performance. The origina
 
 ## CurseForge
 
-Suggested display title: **Metal Renderer**. CurseForge's published naming rule excludes game names and version information from titles, so use this shorter title for the listing while retaining "Minecraft Metal" as the in-game mod name.
+Display title: **Minecraft Metal**, matching the maintainer's chosen canonical name. The author dashboard accepted and saved this title. CurseForge's published naming guidance excludes game names, so title acceptance by moderation is not yet established; a moderator may request an alternative. Keep any required platform exception explicit rather than treating it as a second project name.
 
 Upload the actual JAR to CurseForge and keep the description self-contained. The shared description intentionally has no external binary-download link. Add an original **400 × 400** project icon and the real gameplay screenshots. Select the closest available rendering/graphics category; an optimization category must not be used to imply an unmeasured speedup.
 

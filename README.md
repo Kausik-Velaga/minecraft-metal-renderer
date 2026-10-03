@@ -57,6 +57,17 @@ See [screenshots and validation details](docs/validation.md) and the [clean-inst
 
 See the [compatibility notes](docs/compatibility.md) for more detail.
 
+## How can I help?
+
+**Testing on your Mac is a contribution—no coding required.** So far, the documented checks cover one Apple M3 Pro configuration. Reports from other Apple Silicon Macs, macOS versions, and displays help us find problems we cannot reproduce on that machine. **“Everything worked” reports are useful too.**
+
+- **Have 10–15 minutes?** Follow the [community testing guide](docs/community-testing.md), try the released JAR in a separate profile, and [submit a hardware test report](https://github.com/Kausik-Velaga/minecraft-metal-renderer/issues/new?template=hardware_test.yml). Report what you tried, including anything you skipped.
+- **Already playing?** Longer sessions, dimension travel, external displays, and testing one resource pack or mod at a time all help. Start with a clean baseline and include exact versions.
+- **Comfortable building from source?** Run the [automated GPU and gameplay checks](docs/community-testing.md#automated-tests-for-source-contributors). They exercise real Metal rendering and save screenshots for review.
+- **Want to help with code?** Reproduce reported failures, add regression scenes, or improve the testing tools. See [Contributing](CONTRIBUTING.md).
+
+Submit reports yourself after reviewing the evidence; this contribution workflow does not upload anything automatically. One successful run establishes evidence for that setup and those checks, not universal compatibility or a performance gain.
+
 ## Help and bug reports
 
 If the game fails to start, check the Minecraft/Fabric versions and confirm your launcher uses ARM64 Java 25 or newer. If removing this JAR resolves the problem, [report it on GitHub](https://github.com/Kausik-Velaga/minecraft-metal-renderer/issues/new?template=bug_report.yml).

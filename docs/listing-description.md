@@ -28,6 +28,12 @@ Validation on an Apple M3 Pro covered terrain, water, glass, entities, particles
 
 This is an **experimental release** with limited hardware and gameplay coverage. No comparative FPS improvement has been established. Sodium, Iris, shader packs, other rendering mods, and third-party resource packs are unverified. Mods that depend on OpenGL or Vulkan internals may not work with this renderer.
 
+## How can I help?
+
+**Testing on your Mac is a contribution—no coding required.** Our documented checks currently cover one Apple M3 Pro configuration. Other Apple Silicon chips, macOS versions, external displays, and longer play sessions all need coverage. Successful runs are useful too.
+
+Try the [10–15 minute testing checklist](https://github.com/Kausik-Velaga/minecraft-metal-renderer/blob/main/docs/community-testing.md) in a separate profile, then [submit a hardware test report](https://github.com/Kausik-Velaga/minecraft-metal-renderer/issues/new?template=hardware_test.yml) with your setup and what you checked. If you build from source, the guide also explains how to run the existing automated GPU and gameplay tests. Review logs and screenshots before sharing; this workflow does not upload them automatically.
+
 ## Help and source
 
 [Installation help](https://github.com/Kausik-Velaga/minecraft-metal-renderer/blob/main/docs/installation.md) · [Bug reports](https://github.com/Kausik-Velaga/minecraft-metal-renderer/issues/new?template=bug_report.yml) · [Source code](https://github.com/Kausik-Velaga/minecraft-metal-renderer) · [Validation and screenshots](https://github.com/Kausik-Velaga/minecraft-metal-renderer/blob/main/docs/validation.md)

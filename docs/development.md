@@ -2,6 +2,8 @@
 
 For installing the released mod, see the [player guide](installation.md). The tools and commands below are for building and testing the source.
 
+To contribute results from your Mac, see [community testing](community-testing.md#automated-tests-for-source-contributors) for the combined test command, evidence locations, and hardware report form. Successful runs and partial failures are both useful.
+
 ## Build and run
 
 Requirements:

@@ -1,0 +1,115 @@
+name: Hardware test report
+description: Share a test run on your Mac, including when everything works. No coding required.
+title: "[Hardware test] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing! Successful and partial runs both help.
+        Follow the [community testing guide](https://github.com/Kausik-Velaga/minecraft-metal-renderer/blob/main/docs/community-testing.md).
+        Report only what you tried; leave skipped checks as **Not tested**.
+        For a reproducible defect, you can link a separate bug report below.
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Overall result
+      options:
+        - No issues observed in the checks I tried
+        - Rendering or gameplay issues observed
+        - Could not complete testing (startup failure, crash, hang, or setup problem)
+    validations:
+      required: true
+  - type: dropdown
+    id: method
+    attributes:
+      label: Test method
+      options:
+        - Released JAR in a launcher
+        - Automated tests from source
+        - Both (describe each run below)
+        - Manual play from source
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions and build
+      description: Include exact versions. For source runs, include the commit and whether you changed the source.
+      value: |
+        Minecraft Metal:
+        Minecraft:
+        Fabric Loader:
+        macOS:
+        Java version and architecture:
+        Launcher:
+        Source commit / local changes (if applicable):
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Mac hardware
+      description: Model, exact Apple chip, and RAM. Do not include a serial number.
+      placeholder: "MacBook Pro, Apple M3 Pro, 18 GB RAM"
+    validations:
+      required: true
+  - type: textarea
+    id: settings
+    attributes:
+      label: Display and game settings
+      description: Built-in/external display, resolution/scaling and refresh rate, windowed/fullscreen, render/simulation distance, GUI scale, VSync/FPS cap, and Improved Transparency. Include power mode and AC/battery status for performance results.
+    validations:
+      required: true
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods and resource packs
+      description: Write "none" for a clean run. Otherwise include exact names/versions and whether you also tried a clean baseline.
+    validations:
+      required: true
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Was Metal active?
+      description: Look for "Using graphics backend Metal" and "Metal device created" in latest.log. Automated gameplay tests also assert the active backend.
+      options:
+        - Confirmed Metal was active
+        - Metal did not activate or startup failed
+        - Could not confirm
+    validations:
+      required: true
+  - type: textarea
+    id: checks
+    attributes:
+      label: Checks performed
+      description: Replace "Not tested" with Pass or Issue only for checks you performed. Include test duration and describe issues below. For source tests, record automated completion separately from screenshot review.
+      value: |
+        Test duration:
+        Startup and menus: Not tested
+        Terrain and movement: Not tested
+        Water, glass, and leaves: Not tested
+        Improved Transparency off/on/off: Not tested
+        Entities, particles, and inventory: Not tested
+        Lighting: Not tested
+        Resource reload: Not tested
+        Resize and fullscreen: Not tested
+        Save and re-enter: Not tested
+        Optional scenarios (dimensions, weather, displays, longer play): Not tested
+
+        Source tests, if applicable:
+        build (includes GPU smoke checks): Not tested
+        runClientGameTest: Not tested
+        runClientNaturalGameTest: Not tested
+        Screenshots visually reviewed: Not tested
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Observations, logs, and screenshots
+      description: Include Metal activation evidence if available, what you saw, reproduction steps, and related bug links. Attach only evidence from this run. Review for credentials, usernames, personal paths, server addresses, and chat before posting. Do not attach account files, whole game folders, or private worlds.
+  - type: textarea
+    id: performance
+    attributes:
+      label: Optional performance comparison
+      description: Only if you measured it. Include both backends, identical scene/settings, warm-up and measurement duration, repeated results, power mode, and whether Metal API Validation was disabled. Automated walkthrough FPS is not a benchmark.

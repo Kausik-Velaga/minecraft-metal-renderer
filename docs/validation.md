@@ -71,4 +71,6 @@ The natural run reported 119 FPS and a last CPU frame of 1.89 ms with test sched
 
 ## Next validation work
 
+Want to contribute a run from your Mac? Follow the [community testing guide](community-testing.md) and submit a hardware test report, including successful results. Reports should identify the exact version, hardware, OS, display setup, and checks performed before being added to this validation record.
+
 Run longer survival sessions and dimension travel; exercise weather, underwater views, dense overlapping transparency, third-party resource packs, and monitors with different backing scales. Compare matched scenes against a vanilla backend, then profile CPU/JNI/upload/GPU costs with Metal API Validation disabled. Begin a fresh 26.3 source audit before making Sodium or Iris compatibility claims.

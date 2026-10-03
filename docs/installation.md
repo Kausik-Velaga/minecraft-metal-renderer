@@ -13,6 +13,10 @@ This guide installs the experimental **0.2.0** release for **Minecraft Java 26.3
 
 The `mods` folder belongs inside the selected **game directory**, not inside the launcher application or the game's `versions` folder. For profiles using the default game directory, Finder's **Go → Go to Folder** can open `~/Library/Application Support/minecraft`; the folder for mods is inside it. A separate profile with no custom game directory may still share that default folder, so check the setting before adding the JAR.
 
+### Nexus Mods downloads
+
+Nexus Mods requires an archive, so its download is `minecraft-metal-renderer-0.2.0-nexus.zip`. Extract that outer ZIP once, then place the enclosed **`minecraft-metal-renderer-0.2.0.jar`** in your profile's `mods` folder. Keep the JAR intact. Do not put the outer ZIP, `INSTALL.txt`, license, or checksum file in `mods`. The enclosed JAR is identical to the GitHub and CurseForge release file. Use manual installation; Vortex integration has not been tested.
+
 ## Other launchers
 
 Create a Minecraft **26.3** instance and install Fabric Loader **0.19.5** using the launcher's instance settings. Select **ARM64 Java 25 or newer** if the launcher asks for a Java runtime. Use its option to open the instance's game folder, then place the same JAR in `mods`. Start with no other mods or resource packs.

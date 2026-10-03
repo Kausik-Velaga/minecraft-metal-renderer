@@ -1,12 +1,17 @@
 # Registry submission notes
 
-Prepared October 2, 2026 for the experimental 0.2.0 release. These are maintainer notes, not the public mod description. No CurseForge or Nexus Mods listing has been submitted as part of this preparation.
+Prepared October 2, 2026 for the experimental 0.2.0 release. These are maintainer notes, not the public mod description.
+
+## Listing status
+
+- **CurseForge:** project **1723425**, **Metal Renderer**, created and awaiting moderation. [Author dashboard](https://authors.curseforge.com/#/projects/1723425). The release-file upload is not yet submitted.
+- **Nexus Mods:** draft **1362**, **Minecraft Metal**, has the release archive and three gameplay screenshots uploaded. [Draft listing](https://www.nexusmods.com/minecraft/mods/1362). It is not yet published; requirements, permissions, and the ZIP-specific description still need a final check.
 
 ## Shared listing material
 
 - **Description:** copy [listing-description.md](listing-description.md) into the registry's description editor and check its preview. It includes the AI disclosure, requirements, installation, tested scope, and support links.
 - **Summary:** Experimental native Metal renderer for Minecraft Java 26.3 on Apple Silicon Macs.
-- **Main file:** `minecraft-metal-renderer-0.2.0.jar`, available in the [GitHub prerelease](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/tag/v0.2.0). Upload the JAR itself, not a source ZIP or the checksum file.
+- **Main file:** `minecraft-metal-renderer-0.2.0.jar`, available in the [GitHub prerelease](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/tag/v0.2.0). Upload the JAR itself to CurseForge; use the wrapper ZIP described below for Nexus. Never upload a source archive as the playable mod.
 - **File version:** 0.2.0. Mark experimental/alpha where that option is offered.
 - **Game / loader / environment:** Minecraft Java 26.3 / Fabric / client-only.
 - **Requirements:** Apple Silicon, macOS 14+, ARM64 Java 25+, Fabric Loader 0.19.3+ (0.19.5 tested). Do not list Fabric API as a required dependency.
@@ -24,7 +29,7 @@ Use the existing, unaltered game captures as gallery images:
 - [Overlapping glass and boat water mask](evidence/26.3/transparency-on-boat-water-mask.png) — controlled transparency test scene.
 - [Inventory](evidence/26.3/inventory.png) — inventory and item rendering.
 
-These demonstrate the tested rendering, not comparative performance. The repository does not yet include a standalone project icon.
+These demonstrate the tested rendering, not comparative performance. The original, AI-generated project icon is available as [editable SVG](assets/icon.svg) and [400 × 400 PNG](assets/icon.png). Retain the icon's AI disclosure in listings; the gameplay images are actual captures.
 
 ## CurseForge
 
@@ -36,9 +41,11 @@ The current published rules do not state a blanket prohibition on AI-generated c
 
 ## Nexus Mods
 
-Use the **Minecraft** game category, with **Minecraft Metal** as the title. Upload the same JAR and state the Apple Silicon/macOS restriction prominently. Use manual installation instructions; no Nexus mod-manager integration has been tested.
+Use the **Minecraft** game category, with **Minecraft Metal** as the title. The upload form accepts archives, not JARs. Upload `minecraft-metal-renderer-0.2.0-nexus.zip`, containing the unchanged tested JAR, `INSTALL.txt`, `LICENSE`, and `SHA256SUMS`. Its SHA-256 is `a06b6030cb3f36fb06419bd3f5ca0934b6f7a6971e364c01547ca2bed7fab46c`.
 
-Apply **AI-Generated Content** for the generated code and **AI Media** for the generated page description. "AI Assisted" would understate how this project was made. Use the real gameplay captures for the gallery and mark the file as experimental in its description.
+State the Apple Silicon/macOS restriction prominently. Adapt the shared description's download step: extract the outer ZIP once, then copy the intact enclosed JAR into `mods`. Use manual installation instructions; no Nexus mod-manager integration has been tested. See the [Nexus installation notes](installation.md#nexus-mods-downloads).
+
+Apply **AI-Generated Content** for the generated code and **AI Media** for the generated page description and project icon. "AI Assisted" would understate how this project was made. Use the real gameplay captures for the gallery and mark the file as experimental in its description.
 
 Review the [Nexus file submission guidelines](https://help.nexusmods.com/article/28-file-submission-guidelines), particularly AI tags and evidence for performance claims, when submitting.
 

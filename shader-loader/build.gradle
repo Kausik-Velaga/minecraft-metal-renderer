@@ -1,0 +1,282 @@
+plugins {
+    id 'net.fabricmc.fabric-loom'
+    id 'maven-publish'
+}
+
+version = shader_loader_version
+group = 'dev.kausik.shaders'
+base { archivesName = 'minecraft-shader-loader' }
+
+apply from: rootProject.file('gradle/minecraft-mod.gradle')
+
+dependencies {
+    // A separate mod dependency, never bundled into the shader-loader JAR.
+    implementation project(':')
+    // Loom's shared development Minecraft jar includes Fabric's interface injections.
+    compileOnly "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+    testImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+}
+
+loom {
+    runs {
+        client {
+            vmArg '-Xmx4G'
+            vmArg '-Dmetal.enabled=true'
+        }
+    }
+}
+
+test { failOnNoDiscoveredTests = false }
+
+tasks.register('compatibilityTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.shaders.compile.ShaderCompatibilityTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('terrainGeometryTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.shaders.geometry.TerrainGeometryTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+// A locally supplied pack is required; copyrighted shader packs are never bundled or downloaded.
+tasks.register('bslShaderSmokeTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.shaders.compile.BslShaderSmokeTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    environment 'MTL_DEBUG_LAYER', '1'
+    doFirst {
+        def pack = providers.gradleProperty('shaderPack').orNull
+        if (pack == null) throw new GradleException('Supply -PshaderPack=/absolute/path/to/pack.zip')
+        args pack
+    }
+}
+
+check { dependsOn 'compatibilityTest', 'terrainGeometryTest' }
+
+tasks.register('packTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.shaders.pack.ShaderPackSmokeTest'
+    doFirst {
+        def pack = providers.gradleProperty('shaderPack').orNull
+        if (pack != null) args pack
+    }
+}
+check { dependsOn 'packTest' }
+
+tasks.register('mipmapTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.shaders.compile.PackMipmapsTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    environment 'MTL_DEBUG_LAYER', '1'
+}
+tasks.register('shadowComparisonTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.shaders.compile.ShadowComparisonTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    environment 'MTL_DEBUG_LAYER', '1'
+}
+check { dependsOn 'mipmapTest', 'shadowComparisonTest' }
+
+['depthMergeTest': 'PackDepthMergeTest', 'dynamicBlockGeometryTest': 'DynamicBlockGeometryTest',
+ 'alphaDiscardTest': 'AlphaDiscardTest', 'packCoordinatesTest': 'PackCoordinatesTest',
+ 'waterMaskTest': 'WaterMaskTest'].each { taskName, testClass ->
+    tasks.register(taskName, JavaExec) {
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = "dev.kausik.shaders.compile.${testClass}"
+        jvmArgs '--enable-native-access=ALL-UNNAMED'
+        environment 'MTL_DEBUG_LAYER', '1'
+    }
+    check { dependsOn taskName }
+}
+
+['portalGeometryTest': 'compile.PortalGeometryTest',
+ 'featureDrawContextTest': 'geometry.FeatureDrawContextTest',
+ 'shadowLightConventionTest': 'runtime.ShadowLightConventionTest',
+ 'packProgramsValidationTest': 'runtime.PackProgramsValidationTest'].each { taskName, testClass ->
+    tasks.register(taskName, JavaExec) {
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = "dev.kausik.shaders.${testClass}"
+        jvmArgs '--enable-native-access=ALL-UNNAMED'
+        doFirst {
+            def pack = providers.gradleProperty('shaderPack').orNull
+            if ((taskName == 'packProgramsValidationTest' || taskName == 'shadowLightConventionTest') && pack != null) args pack
+        }
+    }
+    check { dependsOn taskName }
+}
+
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = 'minecraft_shader_loader_gametest'
+        enableGameTests = false
+        enableClientGameTests = true
+    }
+}
+loom.runs.clientGameTest {
+    vmArg '-Dmetal.enabled=true'
+    vmArg '-Xmx4G'
+    def selectedPack = providers.gradleProperty('shaderPack').orNull
+    if (selectedPack != null) vmArg "-DminecraftShaders.pack=${selectedPack}"
+    environmentVariable 'MTL_DEBUG_LAYER', '1'
+}
+tasks.named('runClientGameTest') {
+    def completionMarker = layout.buildDirectory.file('run/clientGameTest/shader-gametest-complete.txt')
+    doFirst {
+        if (!providers.gradleProperty('shaderPack').isPresent()) {
+            throw new GradleException('Supply -PshaderPack=/absolute/path/to/pack.zip')
+        }
+        completionMarker.get().asFile.delete()
+    }
+    doLast {
+        if (!completionMarker.get().asFile.isFile()) {
+            throw new GradleException('Shader client validation did not finish; inspect shader-loader/build/run/clientGameTest/logs/latest.log')
+        }
+    }
+}
+
+loom.runs {
+    clientNaturalGameTest {
+        inherit clientGameTest
+        name 'Shader Pack Natural Terrain Validation'
+        runDir 'build/run/clientNaturalGameTest'
+        vmArg '-DminecraftShaders.testScenario=natural'
+        vmArg '-Dmetal.enabled=true'
+        vmArg '-Xmx4G'
+        def selectedPack = providers.gradleProperty('shaderPack').orNull
+        if (selectedPack != null) vmArg "-DminecraftShaders.pack=${selectedPack}"
+        environmentVariable 'MTL_DEBUG_LAYER', '1'
+    }
+}
+tasks.named('runClientNaturalGameTest') {
+    def completionMarker = layout.buildDirectory.file('run/clientNaturalGameTest/shader-gametest-complete.txt')
+    doFirst {
+        if (!providers.gradleProperty('shaderPack').isPresent()) {
+            throw new GradleException('Supply -PshaderPack=/absolute/path/to/pack.zip')
+        }
+        completionMarker.get().asFile.delete()
+    }
+    doLast {
+        if (!completionMarker.get().asFile.isFile()) {
+            throw new GradleException('Shader natural-terrain validation did not finish; inspect its client log')
+        }
+    }
+}
+
+// A normal game loop for measurements, isolated from Fabric's client-test scheduler.
+sourceSets {
+    benchmark {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+    }
+}
+loom.mods {
+    minecraft_shader_benchmark { sourceSet sourceSets.benchmark }
+}
+tasks.register('benchmarkStatisticsTest', JavaExec) {
+    dependsOn tasks.named('benchmarkClasses')
+    classpath = sourceSets.benchmark.runtimeClasspath
+    mainClass = 'dev.kausik.shaders.benchmark.FrameStatisticsTest'
+}
+check { dependsOn 'benchmarkStatisticsTest' }
+['Baseline': false, 'Bsl': true].each { suffix, withPack ->
+    def runName = "clientBenchmark${suffix}"
+    def label = withPack ? 'bsl-default' : 'baseline'
+    loom.runs.create(runName) {
+        inherit loom.runs.client
+        name "Shader Performance: ${label}"
+        source sourceSets.benchmark
+        runDir "build/run/benchmark-${label}"
+        vmArg '-DminecraftShaders.benchmark=true'
+        vmArg "-DminecraftShaders.benchmark.label=${label}"
+        vmArg "-DminecraftShaders.benchmark.expectPack=${withPack}"
+        vmArg '-DminecraftShaders.benchmark.world=shader-benchmark-scene'
+        vmArg "-DminecraftShaders.pack=${withPack ? providers.gradleProperty('shaderPack').getOrElse('') : ''}"
+        programArgs '--quickPlaySingleplayer', 'shader-benchmark-scene'
+        environmentVariable 'MTL_DEBUG_LAYER', '0'
+    }
+    tasks.named("run${runName.capitalize()}") {
+        dependsOn tasks.named('benchmarkClasses')
+        def runFolder = layout.buildDirectory.dir("run/benchmark-${label}")
+        doFirst {
+            if (withPack && !providers.gradleProperty('shaderPack').isPresent()) {
+                throw new GradleException('Supply -PshaderPack=/absolute/path/to/pack.zip')
+            }
+            def fixture = layout.buildDirectory.dir('run/clientGameTest/saves/Shader pack disposable validation').get().asFile
+            if (!new File(fixture, 'level.dat').isFile()) {
+                throw new GradleException('Run :shader-loader:runClientGameTest first to create the disposable benchmark scene')
+            }
+            def destination = new File(runFolder.get().asFile, 'saves/shader-benchmark-scene')
+            delete destination
+            copy { from fixture; into destination; exclude 'session.lock' }
+            copy {
+                from layout.buildDirectory.file('run/clientGameTest/options.txt')
+                into runFolder
+            }
+            delete new File(runFolder.get().asFile, "benchmarks/${label}.json")
+        }
+        doLast {
+            if (!new File(runFolder.get().asFile, "benchmarks/${label}.json").isFile()) {
+                throw new GradleException("Benchmark ${label} did not finish; inspect its log and .failed.txt report")
+            }
+        }
+    }
+}
+
+// Launch the actual distribution jars with vanilla Minecraft and Fabric Loader. The small
+// benchmark probe controls an isolated fixture; neither Fabric API nor development classes load.
+tasks.register('benchmarkJar', Jar) {
+    dependsOn tasks.named('benchmarkClasses')
+    archiveClassifier = 'benchmark-probe'
+    from sourceSets.benchmark.output
+}
+['Renderer': false, 'Bsl': true].each { suffix, withPack ->
+    tasks.register("runPackaged${suffix}", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+        def label = withPack ? 'packaged-bsl' : 'packaged-renderer'
+        def folder = layout.buildDirectory.dir("run/${label}")
+        runDir = folder
+        mods.setFrom(rootProject.tasks.named('jar'), tasks.named('benchmarkJar'))
+        if (withPack) mods.from tasks.named('jar')
+        jvmArgs.addAll('-Xmx4G', '--enable-native-access=ALL-UNNAMED', '-Dmetal.enabled=true',
+            '-DminecraftShaders.benchmark=true', '-DminecraftShaders.benchmark.production=true',
+            "-DminecraftShaders.benchmark.label=${label}",
+            "-DminecraftShaders.benchmark.expectPack=${withPack}",
+            '-DminecraftShaders.benchmark.world=shader-benchmark-scene',
+            '-DminecraftShaders.benchmark.warmupSeconds=10',
+            '-DminecraftShaders.benchmark.measureSeconds=10',
+            "-DminecraftShaders.pack=${withPack ? providers.gradleProperty('shaderPack').getOrElse('') : ''}")
+        programArgs.addAll('--username', 'ShaderValidation', '--accessToken', '0',
+            '--version', minecraft_version, '--quickPlaySingleplayer', 'shader-benchmark-scene')
+        doFirst {
+            if (withPack && !providers.gradleProperty('shaderPack').isPresent())
+                throw new GradleException('Supply -PshaderPack=/absolute/path/to/pack.zip')
+            def fixture = layout.buildDirectory.dir('run/clientGameTest/saves/Shader pack disposable validation').get().asFile
+            if (!new File(fixture, 'level.dat').isFile())
+                throw new GradleException('Run :shader-loader:runClientGameTest first to create the disposable scene')
+            def destination = new File(folder.get().asFile, 'saves/shader-benchmark-scene')
+            delete destination
+            copy { from fixture; into destination; exclude 'session.lock' }
+            copy { from layout.buildDirectory.file('run/clientGameTest/options.txt'); into folder }
+            delete new File(folder.get().asFile, "benchmarks/${label}.json")
+            delete new File(folder.get().asFile, "benchmarks/${label}.png")
+            delete new File(folder.get().asFile, "benchmarks/${label}.failed.txt")
+        }
+        doLast {
+            def evidence = new File(folder.get().asFile, 'benchmarks')
+            if (!new File(evidence, "${label}.json").isFile()
+                || !new File(evidence, "${label}.png").isFile()
+                || new File(evidence, "${label}.failed.txt").isFile())
+                throw new GradleException("Packaged installation ${label} did not finish; inspect its log")
+        }
+    }
+}

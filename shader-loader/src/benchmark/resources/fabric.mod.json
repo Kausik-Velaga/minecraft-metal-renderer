@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "minecraft_shader_benchmark",
+  "version": "1.0.0",
+  "name": "Shader Renderer Benchmark Harness",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.kausik.shaders.benchmark.ShaderBenchmark"]
+  },
+  "mixins": ["minecraft-shader-benchmark.mixins.json"],
+  "depends": {
+    "minecraft": "26.3",
+    "fabricloader": ">=0.19.0"
+  }
+}

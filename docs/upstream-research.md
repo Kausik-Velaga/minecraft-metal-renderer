@@ -55,3 +55,14 @@ The reference uses the custom **Pebbles_boon Software Licence**, including same-
 - [Apple Metal feature tables](https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf): native format, blending, and GPU-family capabilities.
 
 The backend calls Metal directly; it does not route rendering through MoltenVK.
+
+## Shader-loader format references
+
+The initial loader targets the documented shader-pack interface and the locally supplied BSL
+10.1.8 default configuration. References used for the new loader include the public
+[program and stage documentation](https://shaders.properties/current/reference/programs/overview/),
+[rendering uniforms](https://shaders.properties/current/reference/uniforms/rendering/), and
+[matrix uniforms](https://shaders.properties/current/reference/uniforms/matrices/).
+No competing shader-loader implementation source was inspected for this addition. Minecraft's
+own vertex formats, transforms, draw ordering, and RenderPearl contracts were inspected locally.
+BSL source and generated translations remain excluded from the repository.

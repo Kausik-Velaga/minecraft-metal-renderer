@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "minecraft_shader_loader",
+  "version": "${version}",
+  "name": "Minecraft Shader Loader",
+  "authors": ["Kausik-Velaga"],
+  "contact": {
+    "sources": "https://github.com/Kausik-Velaga/minecraft-metal-renderer",
+    "issues": "https://github.com/Kausik-Velaga/minecraft-metal-renderer/issues"
+  },
+  "description": "Experimental shader-pack loading, scene rendering, shadows, and post-processing for Minecraft Metal.",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.kausik.shaders.ShaderLoaderMod"]
+  },
+  "mixins": ["minecraft-shader-loader.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "minecraft_metal": "~0.2.1"
+  },
+  "license": "MIT"
+}

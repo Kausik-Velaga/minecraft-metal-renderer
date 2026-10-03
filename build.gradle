@@ -2,21 +2,10 @@ plugins {
     id 'net.fabricmc.fabric-loom' version "${loom_version}"
     id 'maven-publish'
 }
-repositories { mavenCentral() }
+apply from: 'gradle/minecraft-mod.gradle'
+
 dependencies {
-    minecraft "com.mojang:minecraft:${minecraft_version}"
-    implementation "net.fabricmc:fabric-loader:${loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
-}
-java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
-    withSourcesJar()
-}
-tasks.withType(JavaCompile).configureEach { options.release = 25 }
-processResources {
-    inputs.property 'version', project.version
-    filesMatching('fabric.mod.json') { expand version: project.version }
 }
 
 // The native binary is rebuilt from source and packaged in the Fabric jar.
@@ -38,7 +27,6 @@ processResources {
     dependsOn 'buildNative'
     from(nativeOutput) { include 'libminecraft_metal.dylib'; into 'native/macos-arm64' }
 }
-jar { from('LICENSE') }
 loom {
     runs {
         client {

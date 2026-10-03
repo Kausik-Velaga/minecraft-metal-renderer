@@ -12,4 +12,10 @@ Build requirements and commands are in the [development guide](docs/development.
 
 Keep Java backend integration and native Metal responsibilities separated. Preserve resource ownership, fence retirement, uniform bindings, and visible rendering behavior. Performance changes should include matched-scene measurements with validation disabled and a visual comparison. Do not claim compatibility or performance gains without evidence.
 
+The root project builds the independently usable Metal renderer; `shader-loader/` builds an optional
+second mod. Keep pack parsing, settings, and pass orchestration in the loader, and native GPU work
+in the renderer. The dependency goes from loader to renderer only. Do not bundle either mod inside
+the other. See the [architecture](docs/architecture.md#two-mods-in-one-repository) before adding a
+cross-module interface.
+
 Submit focused pull requests describing the behavior changed, hardware tested, verification performed, and remaining limitations. Preserve applicable licensing and attribution, and identify substantial AI-generated contributions so reviewers understand their provenance.

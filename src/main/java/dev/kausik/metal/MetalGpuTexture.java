@@ -27,6 +27,17 @@ public final class MetalGpuTexture extends com.mojang.renderpearl.backend.common
   }
 
   @Override
+  public int getWidth(int mipLevel) {
+    // The smaller axis reaches one before the larger axis in a rectangular mip chain.
+    return Math.max(1, super.getWidth(mipLevel));
+  }
+
+  @Override
+  public int getHeight(int mipLevel) {
+    return Math.max(1, super.getHeight(mipLevel));
+  }
+
+  @Override
   public boolean isClosed() {
     return handle == 0;
   }

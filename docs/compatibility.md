@@ -28,4 +28,4 @@ For that release, an adapter would need explicit backend selection, a portable d
 
 ## Iris and shader packs
 
-Iris and shader packs have not been tested or adapted. They are outside the current vanilla/Fabric validation target. No compatibility is claimed for mods that directly call OpenGL or Vulkan, cast concrete RenderPearl backend objects, or require shader resources not exposed by the vanilla render-pipeline binding API.
+The optional Minecraft Shader Loader 0.1.0 targets BSL 10.1.8 defaults with Minecraft Metal 0.2.1. See [shader compatibility and limitations](shader-loader.md) and [validation evidence](shader-validation.md). Iris and other packs remain unverified. No compatibility is claimed for mods that directly call OpenGL or Vulkan, cast concrete RenderPearl backend objects, or require shader resources not exposed by the vanilla render-pipeline binding API.

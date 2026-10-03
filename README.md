@@ -11,11 +11,13 @@ An experimental Fabric mod that renders **Minecraft Java 26.3** using Apple's Me
 
 ## Download
 
-**[Download Minecraft Metal 0.2.0 for Minecraft 26.3](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/download/v0.2.0/minecraft-metal-renderer-0.2.0.jar)** · [Release notes](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/tag/v0.2.0)
+**[Minecraft Metal 0.2.1](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/download/v0.2.1/minecraft-metal-renderer-0.2.1.jar)** · **[Optional Shader Loader 0.1.0](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/download/v0.2.1/minecraft-shader-loader-0.1.0.jar)** · [Release notes](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/tag/v0.2.1)
+
+The renderer works on its own. To use **BSL 10.1.8**, install both JARs and follow the [shader-pack setup](docs/shader-loader.md). Obtain the pack separately; it is not included.
 
 This is an **experimental prerelease**. Use a separate launcher profile for your first try. Download the mod `.jar`; GitHub's **Source code** archives are for developers and cannot be installed as mods.
 
-Also available on **[Nexus Mods](https://www.nexusmods.com/minecraft/mods/1362)** as a ZIP: extract that outer ZIP once and install the enclosed JAR. See the [Nexus installation notes](docs/installation.md#nexus-mods-downloads).
+The earlier renderer 0.2.0 is also available on **[Nexus Mods](https://www.nexusmods.com/minecraft/mods/1362)** as a ZIP: extract that outer ZIP once and install the enclosed JAR. See the [Nexus installation notes](docs/installation.md#nexus-mods-downloads).
 
 ![Minecraft 26.3 terrain and water rendered with Metal, with Improved Transparency enabled](docs/evidence/26.3/natural-terrain-transparency-on.png)
 
@@ -44,14 +46,16 @@ To uninstall, close the game and remove the JAR from `mods`. Remove any older Mi
 
 ## What has been tested?
 
-Version 0.2.0 was tested on an **Apple M3 Pro** in Minecraft 26.3 worlds. Checks covered terrain, water, glass, entities, particles, inventory, lighting, Improved Transparency, resource reload, resizing, and fullscreen transitions. A clean official-launcher profile also passed a user-performed visual walkthrough with only this mod and Fabric Loader installed.
+The renderer was tested on an **Apple M3 Pro** in Minecraft 26.3 worlds. Checks covered terrain, water, glass, entities, particles, inventory, lighting, Improved Transparency, resource reload, resizing, and fullscreen transitions. A clean official-launcher profile also passed a user-performed visual walkthrough with only this mod and Fabric Loader installed.
 
-See [screenshots and validation details](docs/validation.md) and the [clean-install report](docs/launcher-validation.md). These checks cover specific scenes and one hardware configuration. **No comparative FPS improvement has been established.**
+The 0.2.1 / 0.1.0 pair adds BSL scene, dimension, GPU, and packaged-installation checks; see [shader validation and measured frame times](docs/shader-validation.md).
+
+See [renderer screenshots and validation details](docs/validation.md) and the [clean-install report](docs/launcher-validation.md). These checks cover specific scenes and one hardware configuration. **No comparative FPS improvement has been established.**
 
 ## Compatibility
 
 - **Client-only:** install on the Mac running the game, not on a server.
-- **Sodium, Iris, shader packs, and other rendering mods are unverified.** Start with Minecraft Metal on its own.
+- **BSL 10.1.8 defaults** are the initial target of the optional Shader Loader; see [tested configurations and limits](docs/shader-validation.md). Other packs, Sodium, Iris, and rendering replacements are unverified.
 - Third-party resource packs, other Mac models, and extended gameplay have not been broadly tested.
 - Mods that require OpenGL or Vulkan internals may not work with this renderer.
 
@@ -77,6 +81,12 @@ Include your Mac chip, macOS and game versions, other mods, reproduction steps, 
 ## Development
 
 Build tools and commands are in the [development guide](docs/development.md). Players can use the download above without building from source.
+
+The repository also contains a separate **shader-loader module** in `shader-loader/`.
+A root `build` produces two independently installed mod JARs. Minecraft Metal remains usable on its
+own; the optional loader requires it. Paired releases state the tested renderer, loader, game, and
+pack versions. See the [module boundaries](docs/architecture.md#two-mods-in-one-repository)
+and [shader development instructions](docs/development.md#shader-pack-validation).
 
 - [Architecture](docs/architecture.md)
 - [Validation and known limitations](docs/validation.md)

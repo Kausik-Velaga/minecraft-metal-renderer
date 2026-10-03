@@ -55,3 +55,17 @@ The [Minecraft EULA](https://www.minecraft.net/en-us/eula) distinguishes origina
 This review cannot prove the absence of plagiarism across all public/private code, identify the model's training sources, or establish copyright ownership. It did not scan every upstream version, all dependencies' source, patents, or all possible transformed similarities. The comparator does not analyze semantic equivalence. Short conventional code can match independently; conversely, no match is not proof of originality.
 
 Recheck provenance and applicable terms before incorporating outside implementation or changing what is bundled. Preserve upstream authorship and required notices. If a substantive copied section is identified later, resolve its permission/license status or replace it through an appropriately independent implementation; a disclaimer or renaming variables is not a remedy.
+
+## Shader loader 0.1.0 addition
+
+The loader was developed using this project's renderer, Minecraft/Fabric interfaces, public
+shader-pack format documentation, and local inspection of the user-supplied BSL 10.1.8 pack.
+No competing loader or optimization-mod implementation source was inspected for this addition.
+This statement concerns the new loader work; it does not replace the historical renderer review
+above. The loader's code and tests were AI-generated under human direction.
+
+BSL is separately authored and is not relicensed by this project. Its source, textures, ZIP,
+and generated translations are excluded from both the repository and release artifacts. Players
+obtain their own pack and the loader processes it locally. The validation screenshots show actual
+game output; they are not copies of pack source or assets. The initial support target is one
+pack version at its default options, not a certification of general compatibility or legal status.

@@ -1,5 +1,55 @@
 # Architecture
 
+## Two mods in one repository
+
+The repository builds two separately installed Fabric mods. The existing root Gradle project is
+the Metal renderer; `shader-loader/` is a subproject with its own source, metadata, version, and JAR.
+Shared Minecraft, Java, and packaging configuration lives in `gradle/minecraft-mod.gradle`.
+
+| Module | Mod ID | Responsibility |
+| --- | --- | --- |
+| Root (`:`) | `minecraft_metal` | Native Metal GPU execution and presentation |
+| `:shader-loader` | `minecraft_shader_loader` | Shader-pack loading and rendering orchestration |
+
+The renderer has no dependency on the shader loader and remains usable alone. The initial loader
+declares the renderer as a required, separately installed dependency. Neither JAR includes the other.
+The renderer is version `0.2.1`; the loader starts at `0.1.0`, controlled independently by
+`shader_loader_version` in the root Gradle properties.
+
+The loader reads a selected pack ZIP or directory, resolves its options and conditional programs,
+adapts legacy GLSL and Minecraft vertex streams, and schedules scene, shadow, deferred, composite,
+and final passes. Pack selection currently uses a configuration file or JVM property. There is no
+settings screen. BSL 10.1.8 is the initial validation target; support for arbitrary packs is not implied.
+
+The loader owns pack discovery, settings and preprocessing, Minecraft-specific uniforms and
+geometry inputs, shadow passes, pass ordering, and frame history.
+The renderer owns GPU allocations, shader translation to Metal, command encoding,
+synchronization, and presentation. Pack-specific decisions belong in the loader.
+
+Use Minecraft's public RenderPearl interface where it exposes the necessary operations. Add a
+small, explicit capability interface for missing operations only when an implemented pack feature
+requires it. Native handles and Metal
+commands stay inside the renderer. This preserves the possibility of supporting other backends
+later without claiming that the initial loader is backend-independent.
+
+Both mods share the game's process and active GPU device. Separating their artifacts does not
+require a second device, frame copies, or another graphics translation layer. Keep shader loading
+optional and test the renderer both alone and with the loader as functionality is added.
+
+### Shader frame
+
+Terrain retains Minecraft's section meshing and indirect draw batches, with additional material,
+normal, tangent, and UV data in its vertex stream. Dynamic model adapters preserve the game's pose
+and texture bindings. The loader renders pack shadow maps, opaque geometry, depth snapshots,
+deferred lighting, transparent geometry, and the held item before running composite and final
+programs. Pack color attachments use separate read and write textures for each full-screen pass.
+Temporal buffers are reset after world changes, resizing, teleports, and long loading stalls.
+
+Pack depth uses near zero and far one. Projection adapters convert Minecraft's reverse-depth
+matrices to the pack's OpenGL convention, then compiled shaders convert clip depth for Metal.
+Opaque-world, opaque-hand, and transparent depth are kept separately and merged on the GPU.
+Mipmaps and shadow filtering also execute on the GPU without frame-by-frame CPU readback.
+
 ## Integration
 
 `PreferredGraphicsApiMixin` selects `MetalBackend` before window creation. The backend implements the public RenderPearl interfaces shipped with Minecraft 26.3. It creates an SDL window with `SDL_WINDOW_METAL` and returns Mojang's `FrontendGpuDevice` around `MetalDevice`.

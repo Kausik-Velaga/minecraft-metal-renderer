@@ -1,0 +1,17 @@
+// Shared compilation and packaging conventions for the two independently installed mods.
+repositories { mavenCentral() }
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${loader_version}"
+}
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+    withSourcesJar()
+}
+tasks.withType(JavaCompile).configureEach { options.release = 25 }
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') { expand version: project.version }
+}
+jar { from(rootProject.file('LICENSE')) }

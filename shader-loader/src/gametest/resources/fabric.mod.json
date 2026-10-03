@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "minecraft_shader_loader_gametest",
+  "version": "1.0.0",
+  "name": "Shader Pack Render Validation",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": ["dev.kausik.shaders.gametest.ShaderGameplayTest"]
+  },
+  "depends": {
+    "minecraft_shader_loader": "*",
+    "fabric-client-gametest-api-v1": "*"
+  }
+}

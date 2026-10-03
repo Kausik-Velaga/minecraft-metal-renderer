@@ -45,7 +45,7 @@ The reference is a hybrid renderer: terrain hooks bypass vanilla draw groups, na
 
 Useful concepts examined include shared buffers for dynamic uploads, GPU-private render resources, three in-flight resource slots, completion handlers, autorelease pools, and explicit native teardown. Those concepts informed the independent implementation; the hybrid terrain interception, handwritten terrain-specific shaders, and IOSurface/OpenGL composition are not used.
 
-The reference uses the custom **Pebbles_boon Software Licence**, including same-license and source-availability requirements for distributed derivative works. No reference project implementation code was copied into this project.
+The reference uses the custom **Pebbles_boon Software Licence**, including same-license and source-availability requirements for distributed derivative works. The scoped [license and provenance review](license-and-provenance.md) found no distinctive implementation matches against the inspected reference source; this is a bounded comparison, not a guarantee that all possible overlap has been excluded. The reference's license would still apply if protected implementation were incorporated.
 
 ## Source references
 

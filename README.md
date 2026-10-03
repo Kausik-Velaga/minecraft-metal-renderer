@@ -1,5 +1,12 @@
 # Minecraft Metal
 
+> [!IMPORTANT]
+> **AI-generated project**
+>
+> This mod's custom implementation, tests, and project documentation were **completely AI-generated using Codex**. Human involvement consisted of direction, prompts, and testing; the custom implementation was not handwritten by the maintainer.
+>
+> Third-party tooling, dependencies, and license texts retain their original authorship. Gameplay screenshots and logs are actual captures, not AI-generated evidence. This is experimental software; the documented tests do not constitute an independent code or security audit.
+
 A Fabric client mod implementing a native Apple Metal backend for Minecraft Java **26.3**. Minecraft submits its normal render passes through the RenderPearl frontend to a small Objective-C++ JNI library. Presentation uses a `CAMetalLayer` supplied by SDL's Metal view, with no OpenGL context.
 
 Version **0.2.0** has been built and validated in real Minecraft 26.3 worlds on an Apple M3 Pro. Tests cover indexed indirect terrain, Improved Transparency off/on/off, overlapping glass, water, boat water masks, entities, particles, inventory, lighting, resource reload, resizing, and SDL fullscreen transitions. This remains an experimental backend; see [validation and limitations](docs/validation.md) for the exact scope. Sodium and Iris compatibility with 26.3 has not been established.
@@ -73,6 +80,6 @@ The implementation is independent of MetalRender's hybrid rendering code. No Ope
 
 ## Source and feedback
 
-Source and development history are hosted at [Kausik-Velaga/minecraft-metal-renderer](https://github.com/Kausik-Velaga/minecraft-metal-renderer). Report reproducible problems through the [issue tracker](https://github.com/Kausik-Velaga/minecraft-metal-renderer/issues); see [CONTRIBUTING.md](CONTRIBUTING.md) for testing and contribution expectations. The project is distributed under the [MIT license](LICENSE).
+Source and development history are hosted at [Kausik-Velaga/minecraft-metal-renderer](https://github.com/Kausik-Velaga/minecraft-metal-renderer). Report reproducible problems through the [issue tracker](https://github.com/Kausik-Velaga/minecraft-metal-renderer/issues); see [CONTRIBUTING.md](CONTRIBUTING.md) for testing and contribution expectations.
 
-This project was developed with substantial AI-generated code and documentation using Codex, with user direction and automated and interactive validation. The checked-in evidence describes the tested scope; it is not a guarantee of compatibility or a comparative performance benchmark.
+The project's own material is offered under the [MIT license](LICENSE), to the extent the contributors hold copyright or other licensable rights. This does not assert copyright over otherwise unprotected AI output or relicense third-party material. See [third-party notices](THIRD_PARTY_NOTICES.md) and the [license and provenance review](docs/license-and-provenance.md) for the exceptions, reference credits, and limits of the source comparison.

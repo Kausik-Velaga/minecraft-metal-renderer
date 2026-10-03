@@ -5,7 +5,7 @@ An experimental Fabric mod that renders **Minecraft Java 26.3** using Apple's Me
 > [!IMPORTANT]
 > **Completely AI-generated custom implementation**
 >
-> This mod's custom code, tests, and project documentation were completely AI-generated using Codex. Human involvement consisted of direction, prompts, and testing; the custom implementation was not handwritten by the maintainer.
+> This mod's custom code, tests, project documentation, listing descriptions, and project icon were completely AI-generated using Codex. Human involvement consisted of direction, prompts, and testing; the custom implementation was not handwritten by the maintainer.
 >
 > Third-party tooling, dependencies, and license texts retain their original authorship. Screenshots and logs are actual game captures. The documented testing is not an independent code or security audit.
 
@@ -14,6 +14,8 @@ An experimental Fabric mod that renders **Minecraft Java 26.3** using Apple's Me
 **[Download Minecraft Metal 0.2.0 for Minecraft 26.3](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/download/v0.2.0/minecraft-metal-renderer-0.2.0.jar)** · [Release notes](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/tag/v0.2.0)
 
 This is an **experimental prerelease**. Use a separate launcher profile for your first try. Download the mod `.jar`; GitHub's **Source code** archives are for developers and cannot be installed as mods.
+
+Also available on **[Nexus Mods](https://www.nexusmods.com/minecraft/mods/1362)** as a ZIP: extract that outer ZIP once and install the enclosed JAR. See the [Nexus installation notes](docs/installation.md#nexus-mods-downloads).
 
 ![Minecraft 26.3 terrain and water rendered with Metal, with Improved Transparency enabled](docs/evidence/26.3/natural-terrain-transparency-on.png)
 

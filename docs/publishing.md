@@ -4,8 +4,8 @@ Prepared October 2, 2026 for the experimental 0.2.0 release. These are maintaine
 
 ## Listing status
 
-- **CurseForge:** project **1723425**, **Metal Renderer**, created and awaiting moderation. [Author dashboard](https://authors.curseforge.com/#/projects/1723425). The release-file upload is not yet submitted.
-- **Nexus Mods:** draft **1362**, **Minecraft Metal**, has the release archive and three gameplay screenshots uploaded. [Draft listing](https://www.nexusmods.com/minecraft/mods/1362). It is not yet published; requirements, permissions, and the ZIP-specific description still need a final check.
+- **CurseForge:** project **1723425**, **Metal Renderer**, is awaiting moderator approval. Release file **9043119** is **Under Review**, tagged Alpha / Minecraft 26.3 / Fabric / Client / Java 25, with automatic publication after approval selected. The MIT license, GitHub source, icon, description, and three captioned gameplay images are saved. [Author dashboard](https://authors.curseforge.com/#/projects/1723425/files) · [Listing preview](https://www.curseforge.com/minecraft/mc-mods/metal-renderer/preview). The listing is not yet public. Alpha files are not shown in the CurseForge client and require a direct project link.
+- **Nexus Mods:** **[Minecraft Metal — 1362](https://www.nexusmods.com/minecraft/mods/1362)** is published, with one main archive, three gameplay images, **AI-Generated Content** and **AI Media** tags, an external Fabric Loader requirement, and custom permissions containing the MIT license and its scope qualifications. The public description includes the ZIP-specific manual installation instructions. Mod rewards were not enabled.
 
 ## Shared listing material
 

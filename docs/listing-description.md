@@ -2,7 +2,7 @@
 
 Minecraft Metal is an experimental Fabric mod that renders Minecraft Java 26.3 using Apple's Metal graphics API on Apple Silicon Macs. It runs on your client and activates automatically when installed.
 
-**AI disclosure:** this mod's custom implementation, tests, and project documentation were completely AI-generated using Codex. Human involvement consisted of direction, prompts, and testing. Third-party tooling and dependencies retain their original authorship. Screenshots and logs are actual game captures. This description was also AI-generated.
+**AI disclosure:** this mod's custom implementation, tests, project documentation, description, and project icon were completely AI-generated using Codex. Human involvement consisted of direction, prompts, and testing. Third-party tooling and dependencies retain their original authorship. Gameplay screenshots and logs are actual game captures.
 
 ## Requirements
 

@@ -1,0 +1,25 @@
+# Selected game-log lines from the isolated official-launcher profile. Account identity and unrelated service messages omitted.
+[18:09:35] [main/INFO]: Loading Minecraft 26.3 with Fabric Loader 0.19.5
+[18:09:35] [main/INFO]: Loading 5 mods:
+	- fabricloader 0.19.5
+	   \-- mixinextras 0.5.5
+	- java 25
+	- minecraft 26.3
+	- minecraft_metal 0.2.0
+[18:09:35] [main/INFO]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.5).
+[18:09:40] [Render thread/INFO]: Native Metal backend selected. Use -Dmetal.enabled=false to use Minecraft's graphics setting.
+[18:09:40] [Render thread/INFO]: SDL [SYSTEM]: App name: Minecraft
+[18:09:40] [Render thread/INFO]: SDL [SYSTEM]: App version: 26.3
+[18:09:40] [Render thread/INFO]: SDL [SYSTEM]: App ID: com.mojang.minecraft
+[18:09:40] [Render thread/INFO]: SDL [SYSTEM]: SDL revision: SDL-3.4.14-62f10da
+[18:09:40] [Render thread/INFO]: Metal device created: Apple M3 Pro. Native SDL presentation, no OpenGL context.
+[18:09:40] [Render thread/INFO]: Using graphics backend Metal, using drivers: 26.5.2
+[18:09:40] [Render thread/INFO]: Using graphics device extensions: MSL, SPIRV-Cross, CAMetalLayer
+[18:09:40] [Render thread/INFO]: Created window using SDL video driver: cocoa
+[18:09:42] [Render thread/INFO]: Reloading ResourceManager: vanilla, vanilla
+[18:12:31] [Server thread/INFO]: Starting integrated minecraft server version 26.3
+[18:12:38] [Server thread/INFO]: Saving and pausing game...
+[18:13:30] [Server thread/INFO]: Saving and pausing game...
+[18:14:15] [Server thread/INFO]: Saving and pausing game...
+[18:14:40] [Server thread/INFO]: Saving and pausing game...
+[18:15:00] [Server thread/INFO]: Stopping server

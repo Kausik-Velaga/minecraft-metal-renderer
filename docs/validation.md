@@ -15,6 +15,8 @@ A normal `./gradlew runClient` launch also selected Metal through SDL's `cocoa` 
 
 The build runs all three GPU smoke tests. The packaged `build/libs/minecraft-metal-renderer-0.2.0.jar` was checked for version 0.2.0, Minecraft dependency `~26.3`, its arm64 native library, and exclusion of gameplay probes and smoke classes. The bundled native bytes match the build output and link only to system libraries/frameworks.
 
+The subsequent [packaged JAR and clean-launcher check](launcher-validation.md) verified the distribution in the official Minecraft Launcher with bundled ARM64 Java 25.0.1 and no Fabric API. It includes user-reported visual verification and a successful assembly from a fresh clone of the public source.
+
 ## GPU checks
 
 All checks below use actual Metal GPU work with Metal API Validation enabled.

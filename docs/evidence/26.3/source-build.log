@@ -1,0 +1,48 @@
+
+> Configure project :
+Fabric Loom: 1.18.2
+
+> Task :compileJava
+
+> Task :configureNative
+-- The CXX compiler identification is AppleClang 21.0.0.21000099
+-- The OBJCXX compiler identification is AppleClang 21.0.0.21000099
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Detecting OBJCXX compiler ABI info
+-- Detecting OBJCXX compiler ABI info - done
+-- Check for working OBJCXX compiler: /usr/bin/c++ - skipped
+-- Found JNI: /opt/homebrew/Cellar/openjdk/26.0.1/libexec/openjdk.jdk/Contents/Home/include  found components: AWT JVM
+-- Configuring done (1.2s)
+-- Generating done (0.0s)
+-- Build files have been written to: <USER_HOME>/Programs/minecraft-metal-renderer/.research/release-prep/source-check/build/native
+
+> Task :buildNative
+[ 50%] Building OBJCXX object CMakeFiles/minecraft_metal.dir/MetalContext.mm.o
+[ 50%] Building OBJCXX object CMakeFiles/minecraft_metal.dir/MetalResources.mm.o
+[ 50%] Building OBJCXX object CMakeFiles/minecraft_metal.dir/MetalFormats.mm.o
+[ 66%] Building OBJCXX object CMakeFiles/minecraft_metal.dir/MetalCommands.mm.o
+[ 83%] Building OBJCXX object CMakeFiles/minecraft_metal.dir/MetalPresentation.mm.o
+[100%] Linking OBJCXX shared library libminecraft_metal.dylib
+[100%] Built target minecraft_metal
+
+> Task :processResources
+> Task :classes
+> Task :processIncludeJars
+> Task :jar
+> Task :sourcesJar
+> Task :assemble
+
+[Incubating] Problems report is available at: file://<USER_HOME>/Programs/minecraft-metal-renderer/.research/release-prep/source-check/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 7s
+7 actionable tasks: 7 executed

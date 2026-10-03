@@ -12,6 +12,10 @@ This is an experimental **client-only** mod for Minecraft **26.3**, Fabric Loade
 
 Install Fabric for Minecraft 26.3 in your launcher, create a separate game directory, and copy `minecraft-metal-renderer-0.2.0.jar` into its `mods` folder. Metal is selected automatically. The native library is included: players do not need Xcode, CMake, or a separate shader compiler. Use the normal mod JAR, not the sources JAR, and do not install the older 26.2 build alongside it.
 
+Fabric API is **not required** to load this mod. A clean official-launcher profile with only the packaged mod, Fabric Loader 0.19.5, and the launcher's bundled ARM64 Java 25.0.1 successfully initialized the Metal backend. Fabric API is used by the development gameplay-test harness.
+
+The clean installation also passed a user-performed visual walkthrough. See [packaged JAR and launcher validation](docs/launcher-validation.md) for the artifact hash, exact environment, public-source build check, and evidence scope.
+
 Start with no other rendering mods or resource packs. Sodium, Iris, and shader packs are unverified. To disable this backend without removing the JAR, add `-Dmetal.enabled=false` to the launcher's JVM arguments.
 
 ## Build and run

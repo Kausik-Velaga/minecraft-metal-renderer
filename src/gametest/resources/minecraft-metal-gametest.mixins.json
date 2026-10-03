@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "package": "dev.kausik.metal.gametest.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": ["LevelRendererProbeMixin"],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

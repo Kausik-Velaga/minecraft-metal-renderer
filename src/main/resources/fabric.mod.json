@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "minecraft_metal",
+  "version": "${version}",
+  "name": "Minecraft Metal",
+  "authors": ["Kausik-Velaga"],
+  "contact": {
+    "sources": "https://github.com/Kausik-Velaga/minecraft-metal-renderer",
+    "issues": "https://github.com/Kausik-Velaga/minecraft-metal-renderer/issues"
+  },
+  "description": "A native Apple Metal graphics backend for Minecraft's RenderPearl rendering API.",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.kausik.metal.MetalMod"
+    ]
+  },
+  "mixins": [
+    "minecraft-metal.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.3",
+    "java": ">=25"
+  },
+  "license": "MIT"
+}

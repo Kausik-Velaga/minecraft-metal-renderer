@@ -1,0 +1,36 @@
+name: Bug report
+description: Report a crash or rendering problem with Minecraft Metal.
+body:
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Minecraft, Minecraft Metal, Fabric Loader, macOS, and Java versions.
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Mac hardware
+      description: Apple chip, memory, and display resolution.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Problem and reproduction steps
+      description: What happened, what you expected, and how to reproduce it. Include render distance and Improved Transparency setting.
+    validations:
+      required: true
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods and resource packs
+      description: Include whether the issue occurs with only Minecraft Metal installed.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs and screenshots
+      description: Attach relevant latest.log, crash report, or screenshots. Remove access tokens, private server addresses, chat, and personal paths before sharing. Do not upload launcher account files.

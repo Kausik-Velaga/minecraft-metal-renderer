@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "minecraft_metal_gametest",
+  "version": "1.0.0",
+  "name": "Minecraft Metal Render Validation",
+  "environment": "client",
+  "mixins": ["minecraft-metal-gametest.mixins.json"],
+  "entrypoints": {
+    "fabric-client-gametest": ["dev.kausik.metal.gametest.MetalGameplayTest"]
+  },
+  "depends": {
+    "minecraft_metal": "*",
+    "fabric-client-gametest-api-v1": "*"
+  }
+}

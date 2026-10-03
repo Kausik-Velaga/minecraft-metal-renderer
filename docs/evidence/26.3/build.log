@@ -1,0 +1,45 @@
+
+> Configure project :
+Fabric Loom: 1.18.2
+
+> Task :compileJava
+> Task :configureNative UP-TO-DATE
+> Task :buildNative UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes
+> Task :processIncludeJars UP-TO-DATE
+> Task :jar
+> Task :sourcesJar
+> Task :assemble
+> Task :compileTestJava
+> Task :processTestResources NO-SOURCE
+> Task :testClasses
+
+> Task :nativeSmokeTest
+2026-10-02 17:36:10.150 java[10607:6817909] Metal API Validation Enabled
+Native smoke test GPU: Apple M3 Pro
+PASS: Metal copies, mip clears, push constants, float MRT blending/depth output, draw/scissor, texel reads, calibrated GPU timestamps, and zero leaked handles
+
+> Task :shaderSmokeTest
+2026-10-02 17:36:10.648 java[10609:6817941] Metal API Validation Enabled
+[17:36:10] [main/INFO]: Metal device created: Apple M3 Pro. Native SDL presentation, no OpenGL context.
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:<USER_HOME>/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: 195 vanilla pipeline variants (including all OIT stages and optional terrain) compiled twice, 390 total; numeric uniforms + shared push constants rendered/read back, 1.166 s
+
+> Task :test
+
+> Task :transientMemorySmokeTest
+2026-10-02 17:36:12.104 java[10682:6818193] Metal API Validation Enabled
+[17:36:12] [main/INFO]: Metal device created: Apple M3 Pro. Native SDL presentation, no OpenGL context.
+PASS: transient alignment, empty uploads, source slices, independent view ownership, expiration, and fenced GPU lifetime
+
+> Task :validateAccessWidener NO-SOURCE
+> Task :check
+> Task :build
+
+BUILD SUCCESSFUL in 3s
+12 actionable tasks: 8 executed, 4 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.7.1/userguide/configuration_cache_enabling.html

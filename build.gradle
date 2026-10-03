@@ -1,0 +1,128 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+repositories { mavenCentral() }
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+}
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+    withSourcesJar()
+}
+tasks.withType(JavaCompile).configureEach { options.release = 25 }
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') { expand version: project.version }
+}
+
+// The native binary is rebuilt from source and packaged in the Fabric jar.
+def nativeOutput = layout.buildDirectory.dir('native')
+tasks.register('configureNative', Exec) {
+    inputs.files(fileTree('native'))
+    outputs.file(nativeOutput.map { it.file('CMakeCache.txt') })
+    commandLine 'cmake', '-S', 'native', '-B', nativeOutput.get().asFile,
+        '-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCMAKE_OSX_ARCHITECTURES=arm64',
+        "-DJAVA_HOME=${System.getProperty('java.home')}"
+}
+tasks.register('buildNative', Exec) {
+    dependsOn 'configureNative'
+    inputs.files(fileTree('native'))
+    outputs.file(nativeOutput.map { it.file('libminecraft_metal.dylib') })
+    commandLine 'cmake', '--build', nativeOutput.get().asFile, '--parallel', '4'
+}
+processResources {
+    dependsOn 'buildNative'
+    from(nativeOutput) { include 'libminecraft_metal.dylib'; into 'native/macos-arm64' }
+}
+jar { from('LICENSE') }
+loom {
+    runs {
+        client {
+            vmArg '-Xmx4G'
+            vmArg '-Dmetal.enabled=true'
+        }
+    }
+}
+
+// Exercises actual GPU work and verifies readback pixels without a Minecraft window.
+tasks.register('nativeSmokeTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.metal.NativeSmokeTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    environment 'MTL_DEBUG_LAYER', '1'
+}
+
+// Compiles every shipped vanilla pipeline through shaderc, SPIRV-Cross, and the Metal driver.
+tasks.register('shaderSmokeTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.metal.ShaderSmokeTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    environment 'MTL_DEBUG_LAYER', '1'
+}
+
+// Test-only Fabric client harness; never included in the distributed mod jar.
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = 'minecraft_metal_gametest'
+        enableGameTests = false
+        enableClientGameTests = true
+    }
+}
+loom.runs.clientGameTest {
+    vmArg '-Dmetal.enabled=true'
+    vmArg '-Xmx4G'
+    environmentVariable 'MTL_DEBUG_LAYER', '1'
+}
+
+// Regression coverage for transient upload alignment, ownership, and GPU fence retirement.
+tasks.register('transientMemorySmokeTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.metal.TransientMemorySmokeTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    environment 'MTL_DEBUG_LAYER', '1'
+}
+
+// Minecraft can exit with code zero after backend initialization failure.
+// Require the test's completion marker as well as the process exit status.
+tasks.named('runClientGameTest') {
+    def completionMarker = layout.buildDirectory.file('run/clientGameTest/metal-gametest-complete.txt')
+    doFirst { completionMarker.get().asFile.delete() }
+    doLast {
+        if (!completionMarker.get().asFile.isFile()) {
+            throw new GradleException('Metal client validation did not finish; inspect build/run/clientGameTest/logs/latest.log')
+        }
+    }
+}
+
+// A separate process avoids Fabric's client/server phase synchronization across world restarts.
+loom.runs {
+    clientNaturalGameTest {
+        inherit clientGameTest
+        name 'Metal Natural Terrain Validation'
+        runDir 'build/run/clientNaturalGameTest'
+        vmArg '-Dmetal.gametest.scenario=natural'
+    }
+}
+tasks.named('runClientNaturalGameTest') {
+    def completionMarker = layout.buildDirectory.file('run/clientNaturalGameTest/metal-gametest-complete.txt')
+    doFirst { completionMarker.get().asFile.delete() }
+    doLast {
+        if (!completionMarker.get().asFile.isFile()) {
+            throw new GradleException('Metal natural-terrain validation did not finish; inspect build/run/clientNaturalGameTest/logs/latest.log')
+        }
+    }
+}
+
+// GPU tests are executable integration checks rather than JUnit tests.
+test { failOnNoDiscoveredTests = false }
+check {
+    dependsOn 'nativeSmokeTest', 'shaderSmokeTest', 'transientMemorySmokeTest'
+}

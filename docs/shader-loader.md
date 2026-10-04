@@ -57,6 +57,9 @@ settings remain controlled by the pack.
   program. Emissive materials retain their ordinary entity route.
 - Sodium and Iris are not required. Combining other rendering replacements with this pair is
   unverified. The loader has no tested backend other than Minecraft Metal.
+- While a pack frame renders, a pipeline that is not yet in Minecraft's pipeline cache compiles on the
+  render thread instead of the shared background executor, so it cannot wait behind chunk workers that
+  need this frame's terrain upload. `-DminecraftShaders.logPipelineMisses=true` logs each such miss.
 
 Install the paired versions from the same release. Loader 0.1.0 requires renderer 0.2.1 or a compatible
 0.2.x patch; renderer 0.2.0 lacks a mipmap-size fix required by the loader. New Minecraft versions

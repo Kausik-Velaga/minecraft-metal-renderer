@@ -28,6 +28,13 @@ loom {
 
 test { failOnNoDiscoveredTests = false }
 
+tasks.register('scenePipelineCompilationTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.shaders.runtime.ScenePipelineCompilationTest'
+}
+check { dependsOn 'scenePipelineCompilationTest' }
+
 tasks.register('compatibilityTest', JavaExec) {
     dependsOn tasks.named('testClasses')
     classpath = sourceSets.test.runtimeClasspath

@@ -63,6 +63,33 @@ static void clearRegion(Device& d, id<MTLTexture> colorTexture, id<MTLTexture> d
     }
     d.endRender();
 }
+// Metal has no fan topology. Expand an indexed fan into triangle-list indices on the GPU: the index
+// buffer is usually private and filled by an earlier blit, so the CPU cannot read it here.
+static UploadSlice expandTriangleFan(Device& d, id<MTLBuffer> indices, bool index32, uint32_t first, uint32_t triangles) {
+    if (!d.triangleFanPipeline) {
+        auto library = compile(d.object, [NSString stringWithUTF8String:triangleFanShader], "triangle fan");
+        NSError* error = nil;
+        d.triangleFanPipeline = [d.object newComputePipelineStateWithFunction:[library newFunctionWithName:@"expand_triangle_fan"] error:&error];
+        if (!d.triangleFanPipeline) throw std::runtime_error(std::string("Could not create triangle fan pipeline: ") + error.localizedDescription.UTF8String);
+    }
+    auto target = d.upload(nullptr, NSUInteger(triangles) * 3 * sizeof(uint32_t), sizeof(uint32_t));
+    struct { uint32_t first, triangles, index32; } params = {first, triangles, index32 ? 1u : 0u};
+    d.suspendRender();
+    auto encoder = [d.commands() computeCommandEncoder];
+    if (!encoder) throw std::runtime_error("Could not create Metal compute encoder for triangle fan");
+    if (d.hasEncoderFence) [encoder waitForFence:d.encoderFence];
+    [encoder setComputePipelineState:d.triangleFanPipeline];
+    [encoder setBuffer:indices offset:0 atIndex:0];
+    [encoder setBuffer:target.buffer offset:target.offset atIndex:1];
+    [encoder setBytes:&params length:sizeof(params) atIndex:2];
+    NSUInteger width = std::min<NSUInteger>(d.triangleFanPipeline.maxTotalThreadsPerThreadgroup, 64);
+    [encoder dispatchThreads:MTLSizeMake(triangles, 1, 1) threadsPerThreadgroup:MTLSizeMake(width, 1, 1)];
+    [encoder updateFence:d.encoderFence];
+    d.hasEncoderFence = true;
+    [encoder endEncoding];
+    d.resumeRender();
+    return target;
+}
 extern "C" {
 JNIEXPORT jlong JNICALL NATIVE(createPipelineWithDepthVariants)(JNIEnv* env, jclass, jlong device, jstring label, jstring vertexMsl, jstring fragmentMsl, jstring fragmentWithoutDepthMsl, jintArray attributes, jintArray layouts, jintArray colors, jint depthCompare, jboolean depthWrite, jboolean cull, jboolean wireframe, jfloat depthBias, jfloat depthSlope) {
     return guarded(env, [&]() -> jlong {
@@ -249,9 +276,17 @@ JNIEXPORT void JNICALL NATIVE(draw)(JNIEnv* env, jclass, jlong device, jint topo
 JNIEXPORT void JNICALL NATIVE(drawIndexed)(JNIEnv* env, jclass, jlong device, jint topology, jlong indices, jboolean index32, jlong indexOffset, jint indexCount, jint baseVertex, jint instances, jint baseInstance) {
     guarded(env, [&] {
         auto& d = get<Device>(device); d.requireRender(); if (d.emptyScissor || indexCount<=0 || instances<=0) return;
-        if (topology == 5) throw std::invalid_argument("Metal indexed triangle fans require triangle-list indices");
         auto buffer = get<Buffer>(indices).object;
         validateRange(buffer.length, indexOffset, static_cast<int64_t>(indexCount)*(index32 ? 4 : 2));
+        if (topology == 5) {
+            if (indexCount < 3) return;
+            NSUInteger size = index32 ? 4 : 2;
+            if (indexOffset % size) throw std::invalid_argument("Metal index offset is not aligned to the index size");
+            uint32_t triangles = static_cast<uint32_t>(indexCount - 2);
+            auto expanded = expandTriangleFan(d, buffer, index32, static_cast<uint32_t>(indexOffset / size), triangles);
+            [d.renderEncoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:NSUInteger(triangles) * 3 indexType:MTLIndexTypeUInt32 indexBuffer:expanded.buffer indexBufferOffset:expanded.offset instanceCount:instances baseVertex:baseVertex baseInstance:baseInstance];
+            return;
+        }
         [d.renderEncoder drawIndexedPrimitives:primitiveType(topology) indexCount:indexCount indexType:index32 ? MTLIndexTypeUInt32 : MTLIndexTypeUInt16 indexBuffer:buffer indexBufferOffset:indexOffset instanceCount:instances baseVertex:baseVertex baseInstance:baseInstance];
     });
 }

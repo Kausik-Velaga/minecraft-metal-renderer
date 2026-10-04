@@ -121,6 +121,7 @@ struct Device final : Resource {
     std::vector<std::shared_ptr<FenceState>> pendingFences;
     id<MTLLibrary> clearLibrary;
     std::unordered_map<uint64_t, id<MTLRenderPipelineState>> clearPipelines;
+    id<MTLComputePipelineState> triangleFanPipeline;
     id<MTLRenderPipelineState> presentationPipeline;
     id<MTLSamplerState> presentationSampler;
     explicit Device(id<MTLDevice> value);

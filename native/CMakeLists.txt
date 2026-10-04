@@ -13,9 +13,11 @@ endif()
 find_package(JNI REQUIRED)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders/presentation.metal"
-    "${CMAKE_CURRENT_SOURCE_DIR}/shaders/clear.metal")
+    "${CMAKE_CURRENT_SOURCE_DIR}/shaders/clear.metal"
+    "${CMAKE_CURRENT_SOURCE_DIR}/shaders/triangle_fan.metal")
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/shaders/presentation.metal" METAL_PRESENTATION_SOURCE)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/shaders/clear.metal" METAL_CLEAR_SOURCE)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/shaders/triangle_fan.metal" METAL_TRIANGLE_FAN_SOURCE)
 configure_file(Shaders.hpp.in "${CMAKE_CURRENT_BINARY_DIR}/generated/MetalShaders.hpp" @ONLY)
 add_library(minecraft_metal SHARED MetalContext.mm MetalFormats.mm MetalResources.mm MetalCommands.mm MetalPresentation.mm)
 target_include_directories(minecraft_metal PRIVATE ${JNI_INCLUDE_DIRS} "${CMAKE_CURRENT_BINARY_DIR}/generated")

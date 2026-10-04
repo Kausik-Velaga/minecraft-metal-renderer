@@ -14,7 +14,8 @@ static jlong createSamplerState(jlong device, bool repeatU, bool repeatV, bool l
     desc.rAddressMode = MTLSamplerAddressModeClampToEdge;
     desc.minFilter = linearMin ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
     desc.magFilter = linearMag ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
-    desc.mipFilter = linearMin ? MTLSamplerMipFilterLinear : MTLSamplerMipFilterNearest;
+    // Mip filtering is independent of texel filtering, matching Vulkan and OpenGL.
+    desc.mipFilter = maxLod > 0.25 ? MTLSamplerMipFilterLinear : MTLSamplerMipFilterNearest;
     desc.compareFunction = comparison ? MTLCompareFunctionLessEqual : MTLCompareFunctionNever;
     desc.maxAnisotropy = std::clamp<int>(anisotropy, 1, 16);
     desc.lodMaxClamp = std::isfinite(maxLod) ? std::max(0.0, maxLod) : FLT_MAX;

@@ -26,13 +26,14 @@ public final class NativeSmokeTest {
       verifyOptionalDepthOutput(device);
       verifyTimestampCalibration(device);
       verifyRendering(device);
+      verifyIndexedTriangleFans(device);
       verifyTexelBuffers(device);
       verifyQueryReuse(device);
       verifyRepeatedDisposal(device);
       equal(1, MetalNative.liveResourceCount(), "only the device handle remains");
       System.out.println(
           "PASS: Metal copies, mip-level blending, mip clears, push constants, float MRT blending/depth output,"
-              + " draw/scissor, texel reads, calibrated GPU timestamps, and zero leaked handles");
+              + " draw/scissor, indexed triangle fans, texel reads, calibrated GPU timestamps, and zero leaked handles");
     } finally {
       MetalNative.destroyDevice(device);
       equal(0, MetalNative.liveResourceCount(), "native handles after device destruction");
@@ -577,6 +578,70 @@ public final class NativeSmokeTest {
       pixel(result, 8, 1, 1, 255, 0, 0, "inside scissor");
       pixel(result, 8, 6, 1, 0, 0, 0, "right of scissor");
       pixel(result, 8, 1, 6, 0, 0, 0, "below scissor");
+    }
+  }
+
+  private static void verifyIndexedTriangleFans(long device) {
+    // Vanilla's profiler chart draws TRIANGLE_FAN geometry through a private, blit-filled index buffer.
+    String vertex =
+        """
+        #include <metal_stdlib>
+        using namespace metal;
+        vertex float4 main0(uint index [[vertex_id]]) {
+            const float2 positions[8] = {float2(0), float2(0), float2(0), float2(0),
+                float2(-1,-1), float2(1,-1), float2(1,1), float2(-1,1)};
+            return float4(positions[index], 0.5, 1);
+        }
+        """;
+    String fragment =
+        """
+        #include <metal_stdlib>
+        using namespace metal;
+        fragment float4 main0() { return float4(0,1,0,1); }
+        """;
+    ByteBuffer shortIndices = bytes(12);
+    for (short value : new short[] {7, 7, 0, 1, 2, 3}) shortIndices.putShort(value);
+    shortIndices.flip();
+    ByteBuffer intIndices = bytes(20);
+    for (int value : new int[] {7, 0, 1, 2, 3}) intIndices.putInt(value);
+    intIndices.flip();
+    try (Resource target = texture(device, "RGBA8_UNORM", 8, 8, 1);
+        Resource shorts = buffer(device, 12, false);
+        Resource ints = buffer(device, 20, false);
+        Resource readback = buffer(device, 8 * 8 * 4, true);
+        Resource pipeline =
+            resource(
+                MetalNative.createPipeline(
+                    device,
+                    "indexed-triangle-fan",
+                    vertex,
+                    fragment,
+                    new int[0],
+                    new int[0],
+                    new int[] {RGBA8, 15, 0, 1, 0, 0, 1, 0, 0},
+                    -1,
+                    false,
+                    false,
+                    false,
+                    0,
+                    0))) {
+      // {index buffer, 32-bit, byte offset of the first index}
+      long[][] cases = {{shorts.id, 0, 4}, {ints.id, 1, 4}};
+      for (long[] fan : cases) {
+        MetalNative.writeBuffer(device, shorts.id, 0, shortIndices, 0, 12);
+        MetalNative.writeBuffer(device, ints.id, 0, intIndices, 0, 20);
+        MetalNative.beginRenderPass(
+            device, "indexed fan", new long[] {target.id}, new float[] {0, 0, 0, 1}, 0, Double.NaN, 0, 0, 8, 8);
+        MetalNative.bindPipeline(device, pipeline.id);
+        MetalNative.drawIndexed(device, 5, fan[0], fan[1] == 1, fan[2], 4, 4, 1, 0);
+        MetalNative.endRenderPass(device);
+        MetalNative.textureToBuffer(device, target.id, 0, 0, 0, 8, 8, readback.id, 0);
+        await(device);
+        ByteBuffer result = MetalNative.mapBuffer(readback.id, 0, 8 * 8 * 4);
+        String width = fan[1] == 1 ? "32-bit" : "16-bit";
+        for (int[] at : new int[][] {{1, 1}, {6, 1}, {1, 6}, {6, 6}})
+          pixel(result, 8, at[0], at[1], 0, 255, 0, width + " indexed fan covers " + at[0] + "," + at[1]);
+      }
     }
   }
 

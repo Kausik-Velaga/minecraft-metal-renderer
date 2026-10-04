@@ -101,7 +101,9 @@ JNIEXPORT jlong JNICALL NATIVE(createSampler)(JNIEnv* env, jclass, jlong device,
         desc.rAddressMode = MTLSamplerAddressModeClampToEdge;
         desc.minFilter = linearMin ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
         desc.magFilter = linearMag ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
-        desc.mipFilter = linearMin ? MTLSamplerMipFilterLinear : MTLSamplerMipFilterNearest;
+        // Mip selection is independent of texel filtering: like the Vulkan and OpenGL backends, blend between
+        // mip levels whenever the sampler can reach more than the base level.
+        desc.mipFilter = maxLod > 0.25 ? MTLSamplerMipFilterLinear : MTLSamplerMipFilterNearest;
         desc.maxAnisotropy = std::clamp<int>(anisotropy, 1, 16);
         desc.lodMaxClamp = std::isfinite(maxLod) ? std::max(0.0, maxLod) : FLT_MAX;
         auto sampler = [get<Device>(device).object newSamplerStateWithDescriptor:desc];

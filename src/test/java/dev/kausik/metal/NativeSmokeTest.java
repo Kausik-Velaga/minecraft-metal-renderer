@@ -24,16 +24,18 @@ public final class NativeSmokeTest {
       verifyPushConstants(device);
       verifyFloatRenderTargets(device);
       verifyOptionalDepthOutput(device);
+      // Exercise compute splits before timestamp queries enable global fences in tracked mode.
+      verifyIndexedTriangleFans(device);
       verifyTimestampCalibration(device);
       verifyRendering(device);
-      verifyIndexedTriangleFans(device);
       verifyTexelBuffers(device);
       verifyQueryReuse(device);
       verifyRepeatedDisposal(device);
       equal(1, MetalNative.liveResourceCount(), "only the device handle remains");
       System.out.println(
-          "PASS: Metal copies, mip-level blending, mip clears, push constants, float MRT blending/depth output,"
-              + " draw/scissor, indexed triangle fans, texel reads, calibrated GPU timestamps, and zero leaked handles");
+          "PASS: Metal copies, mip-level blending, mip clears, push constants, float MRT"
+              + " blending/depth output, draw/scissor, indexed triangle fans, texel reads,"
+              + " calibrated GPU timestamps, and zero leaked handles");
     } finally {
       MetalNative.destroyDevice(device);
       equal(0, MetalNative.liveResourceCount(), "native handles after device destruction");
@@ -95,7 +97,8 @@ public final class NativeSmokeTest {
   }
 
   private static void verifyNearestMipFiltering(long device) {
-    // Nearest texel filtering still blends mip levels (GL_NEAREST_MIPMAP_LINEAR, Vulkan's linear mipmapMode).
+    // Nearest texel filtering still blends mip levels (GL_NEAREST_MIPMAP_LINEAR, Vulkan's linear
+    // mipmapMode).
     String fragment =
         """
         #include <metal_stdlib>
@@ -111,8 +114,11 @@ public final class NativeSmokeTest {
     try (Resource source = texture(device, "RGBA8_UNORM", 8, 8, 2);
         Resource view = resource(MetalNative.createTextureView(source.id, 0, 2));
         Resource mipmapped =
-            resource(MetalNative.createSampler(device, false, false, false, false, 1, Double.POSITIVE_INFINITY));
-        Resource baseOnly = resource(MetalNative.createSampler(device, false, false, false, false, 1, 0));
+            resource(
+                MetalNative.createSampler(
+                    device, false, false, false, false, 1, Double.POSITIVE_INFINITY));
+        Resource baseOnly =
+            resource(MetalNative.createSampler(device, false, false, false, false, 1, 0));
         Resource target = texture(device, "RGBA8_UNORM", 8, 8, 1);
         Resource readback = buffer(device, 8 * 8 * 4, true);
         Resource pipeline =
@@ -137,7 +143,16 @@ public final class NativeSmokeTest {
       long[] samplers = {mipmapped.id, baseOnly.id};
       for (int i = 0; i < 2; i++) {
         MetalNative.beginRenderPass(
-            device, "mip filtering", new long[] {target.id}, new float[] {0, 0, 0, 1}, 0, Double.NaN, 0, 0, 8, 8);
+            device,
+            "mip filtering",
+            new long[] {target.id},
+            new float[] {0, 0, 0, 1},
+            0,
+            Double.NaN,
+            0,
+            0,
+            8,
+            8);
         MetalNative.bindPipeline(device, pipeline.id);
         MetalNative.bindTexture(device, 2, 0, view.id, samplers[i]);
         MetalNative.draw(device, 3, 0, 3, 1, 0);
@@ -145,11 +160,19 @@ public final class NativeSmokeTest {
         MetalNative.textureToBuffer(device, target.id, 0, 0, 0, 8, 8, readback.id, 0);
         await(device);
         ByteBuffer result = MetalNative.mapBuffer(readback.id, 0, 8 * 8 * 4);
-        String label = i == 0 ? "nearest texels, LOD 0.25 between mips" : "nearest texels, mipmaps disabled";
+        String label =
+            i == 0 ? "nearest texels, LOD 0.25 between mips" : "nearest texels, mipmaps disabled";
         for (int channel = 0; channel < 3; channel++) {
           int actual = Byte.toUnsignedInt(result.get((3 * 8 + 3) * 4 + channel));
           if (Math.abs(actual - expected[i][channel]) > 2)
-            throw new AssertionError(label + " channel " + channel + ": expected ~" + expected[i][channel] + ", got " + actual);
+            throw new AssertionError(
+                label
+                    + " channel "
+                    + channel
+                    + ": expected ~"
+                    + expected[i][channel]
+                    + ", got "
+                    + actual);
         }
       }
     }
@@ -582,7 +605,8 @@ public final class NativeSmokeTest {
   }
 
   private static void verifyIndexedTriangleFans(long device) {
-    // Vanilla's profiler chart draws TRIANGLE_FAN geometry through a private, blit-filled index buffer.
+    // Vanilla's profiler chart draws TRIANGLE_FAN geometry through a private, blit-filled index
+    // buffer.
     String vertex =
         """
         #include <metal_stdlib>
@@ -631,7 +655,16 @@ public final class NativeSmokeTest {
         MetalNative.writeBuffer(device, shorts.id, 0, shortIndices, 0, 12);
         MetalNative.writeBuffer(device, ints.id, 0, intIndices, 0, 20);
         MetalNative.beginRenderPass(
-            device, "indexed fan", new long[] {target.id}, new float[] {0, 0, 0, 1}, 0, Double.NaN, 0, 0, 8, 8);
+            device,
+            "indexed fan",
+            new long[] {target.id},
+            new float[] {0, 0, 0, 1},
+            0,
+            Double.NaN,
+            0,
+            0,
+            8,
+            8);
         MetalNative.bindPipeline(device, pipeline.id);
         MetalNative.drawIndexed(device, 5, fan[0], fan[1] == 1, fan[2], 4, 4, 1, 0);
         MetalNative.endRenderPass(device);
@@ -640,7 +673,40 @@ public final class NativeSmokeTest {
         ByteBuffer result = MetalNative.mapBuffer(readback.id, 0, 8 * 8 * 4);
         String width = fan[1] == 1 ? "32-bit" : "16-bit";
         for (int[] at : new int[][] {{1, 1}, {6, 1}, {1, 6}, {6, 6}})
-          pixel(result, 8, at[0], at[1], 0, 255, 0, width + " indexed fan covers " + at[0] + "," + at[1]);
+          pixel(
+              result,
+              8,
+              at[0],
+              at[1],
+              0,
+              255,
+              0,
+              width + " indexed fan covers " + at[0] + "," + at[1]);
+        // Two compute splits must retain earlier pixels, the bound pipeline and each scissor.
+        MetalNative.beginRenderPass(
+            device,
+            "split fans",
+            new long[] {target.id},
+            new float[] {0, 0, 0, 1},
+            0,
+            Double.NaN,
+            0,
+            0,
+            8,
+            8);
+        MetalNative.bindPipeline(device, pipeline.id);
+        MetalNative.scissor(device, 0, 0, 4, 4);
+        MetalNative.drawIndexed(device, 5, fan[0], fan[1] == 1, fan[2], 4, 4, 1, 0);
+        MetalNative.scissor(device, 4, 4, 4, 4);
+        MetalNative.drawIndexed(device, 5, fan[0], fan[1] == 1, fan[2], 4, 4, 1, 0);
+        MetalNative.endRenderPass(device);
+        MetalNative.textureToBuffer(device, target.id, 0, 0, 0, 8, 8, readback.id, 0);
+        await(device);
+        result = MetalNative.mapBuffer(readback.id, 0, 8 * 8 * 4);
+        pixel(result, 8, 1, 1, 0, 255, 0, width + " preserves first fan across second split");
+        pixel(result, 8, 6, 6, 0, 255, 0, width + " restores pipeline for second fan");
+        pixel(result, 8, 6, 1, 0, 0, 0, width + " preserves right scissor exclusion");
+        pixel(result, 8, 1, 6, 0, 0, 0, width + " preserves left scissor exclusion");
       }
     }
   }

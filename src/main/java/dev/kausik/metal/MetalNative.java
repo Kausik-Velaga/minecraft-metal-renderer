@@ -48,6 +48,22 @@ public final class MetalNative {
 
   public static native String deviceName(long device);
 
+  /**
+   * Cumulative execution telemetry without GPU markers, synchronization changes, or GPU waits.
+   * Elements: submitted buffers, completed buffers, timed buffers, GPU span sum (ns), upload-ring
+   * acquires, upload-ring acquire time (ns), drawable acquires, drawable acquire time (ns), failed
+   * buffers, unavailable GPU times, blocked upload-ring acquires, drawable timeouts. Acquire times
+   * include call overhead. GPU spans can overlap and are not a frame critical path or utilization;
+   * start/end deltas also include a few buffers already in flight at each boundary.
+   */
+  public static native long[] executionStatistics(long device);
+
+  /** Optional encoder stage spans. Overlapping durations are diagnostic, not additive GPU time. */
+  public static native String renderStageStatistics(long device);
+
+  /** Cumulative pass and color-attachment counts whose old contents were explicitly discarded. */
+  public static native long[] attachmentDiscardStatistics(long device);
+
   public static native void destroyDevice(long device);
 
   public static native void release(long resource);
@@ -55,6 +71,14 @@ public final class MetalNative {
   public static native long createBuffer(long device, long size, boolean shared, String label);
 
   public static native ByteBuffer mapBuffer(long buffer, long offset, long length);
+
+  /** Optional publication of CPU-owned indirect parameters; external/GPU writes disable reuse. */
+  public static native boolean enableCpuIndirectSnapshots(long device, long buffer);
+
+  public static native ByteBuffer mapCpuIndirectBuffer(long buffer, long offset, long length);
+
+  public static native void publishCpuIndirectBuffer(
+      long device, long buffer, long offset, long length);
 
   public static native void writeBuffer(
       long device, long buffer, long offset, ByteBuffer data, int position, int length);
@@ -75,7 +99,19 @@ public final class MetalNative {
 
   public static native long createTextureView(long texture, int baseMip, int mipCount);
 
+  /** Generates lower mip levels on the GPU; no render pass may be open. */
+  public static native void generateMipmaps(long device, long texture, int levels);
+
   public static native long createSampler(
+      long device,
+      boolean repeatU,
+      boolean repeatV,
+      boolean linearMin,
+      boolean linearMag,
+      int anisotropy,
+      double maxLod);
+
+  public static native long createComparisonSampler(
       long device,
       boolean repeatU,
       boolean repeatV,
@@ -181,6 +217,20 @@ public final class MetalNative {
 
   public static native void endRenderPass(long device);
 
+  /** Explicit overwrite proof supplied through MetalPassHints; clear values take precedence. */
+  public static native void beginRenderPassWithDiscard(
+      long device,
+      String label,
+      long[] colors,
+      float[] clearColors,
+      long depth,
+      double clearDepth,
+      int x,
+      int y,
+      int width,
+      int height,
+      int discardColorMask);
+
   public static native void pushDebugGroup(long device, String label);
 
   public static native void popDebugGroup(long device);
@@ -218,6 +268,32 @@ public final class MetalNative {
       int instances,
       int baseInstance);
 
+  /** Optional GPU command encoding; disabled by default, preserving small-batch loop fallback. */
+  public static native boolean indirectCommandsEnabled(long device);
+
+  /** Actual mode: global-fences, tracked-resources, or global-fences-timestamps after a marker. */
+  public static native String hazardSynchronizationMode(long device);
+
+  public static native void configureIndirectCommands(long device, boolean enabled, int threshold);
+
+  /** Number of batches actually executed through an ICB, for validation and diagnostics. */
+  public static native long indirectCommandExecutions(long device);
+
+  /** First-draw splits, after-draw splits, then their estimated uncompressed store+load bytes. */
+  public static native long[] indirectSplitStatistics(long device);
+
+  /** Enabled, eligible draws, hits, misses, ineligible draws, CPU snapshot bytes published. */
+  public static native long[] indirectReuseStatistics(long device);
+
+  /** CPU ICB mode, populated batches, command slots populated, and CPU encoding wall time (ns). */
+  public static native long[] cpuIndirectStatistics(long device);
+
+  /**
+   * Covered lookups; misses from untracked buffers, poisoned buffers, active mappings, or uncovered
+   * ranges; then capacity evictions and published ranges. Counts only ICB-eligible batch lookups.
+   */
+  public static native long[] indirectSnapshotStatistics(long device);
+
   public static native void drawIndirect(
       long device,
       int topology,
@@ -232,6 +308,12 @@ public final class MetalNative {
   public static native long createFence(long device);
 
   public static native boolean awaitFence(long fence, long timeoutNanos);
+
+  /**
+   * Cumulative CPU fence waits [calls, incomplete-on-entry calls, elapsed nanos]. Zero-timeout
+   * availability probes are excluded. Elapsed time includes acquiring the fence's CPU state lock.
+   */
+  public static native long[] fenceWaitStatistics(long device);
 
   public static native long createSurface(long device, long metalLayer);
 
@@ -278,6 +360,49 @@ public final class MetalNative {
       boolean wireframe,
       float depthBias,
       float depthSlope);
+
+  /** Argument resource tuples: [declared stages, active stages, texture index, has sampler]. */
+  public static native long createPipelineWithArgumentBuffers(
+      long device,
+      String label,
+      String vertexMsl,
+      String fragmentMsl,
+      String fragmentWithoutDepthMsl,
+      int[] attributes,
+      int[] layouts,
+      int[] colors,
+      int depthCompare,
+      boolean depthWrite,
+      boolean cull,
+      boolean wireframe,
+      float depthBias,
+      float depthSlope,
+      int[] argumentResources);
+
+  /**
+   * Explicit arithmetic policy, independent of the legacy diagnostic environment. Vertex math
+   * is Safe; fragmentMathMode is 0 (Safe) or 1 (Relaxed, with Safe platform fallback).
+   */
+  public static native long createPipelineWithMathPolicy(
+      long device,
+      String label,
+      String vertexMsl,
+      String fragmentMsl,
+      String fragmentWithoutDepthMsl,
+      int[] attributes,
+      int[] layouts,
+      int[] colors,
+      int depthCompare,
+      boolean depthWrite,
+      boolean cull,
+      boolean wireframe,
+      float depthBias,
+      float depthSlope,
+      int[] argumentResources,
+      int fragmentMathMode);
+
+  /** Applied native [vertex, fragment] arithmetic modes: 0 Safe, 1 Relaxed. */
+  public static native int[] pipelineMathModes(long pipeline);
 
   public static native void bindTexelBuffer(
       long device,

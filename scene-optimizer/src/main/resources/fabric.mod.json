@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "minecraft_scene_optimizer",
+  "version": "${version}",
+  "name": "Minecraft Scene Optimizer",
+  "authors": ["Kausik-Velaga"],
+  "contact": {
+    "sources": "https://github.com/Kausik-Velaga/minecraft-metal-renderer",
+    "issues": "https://github.com/Kausik-Velaga/minecraft-metal-renderer/issues"
+  },
+  "description": "Independent scene preparation, spatial selection, and retained terrain metadata for Minecraft Metal.",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.kausik.sceneoptimizer.SceneOptimizerMod"]
+  },
+  "mixins": ["minecraft-scene-optimizer.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "minecraft_metal": "~0.2.2"
+  },
+  "license": "MIT"
+}

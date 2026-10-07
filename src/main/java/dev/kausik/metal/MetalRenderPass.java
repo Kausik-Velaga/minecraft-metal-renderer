@@ -15,6 +15,7 @@ final class MetalRenderPass implements RenderPassBackend {
   private final MetalDevice device;
   private final RenderPass.RenderArea area;
   private Object[] uniforms = new Object[0];
+  private boolean[] dirtyUniforms = new boolean[0];
   private MetalRenderPipeline pipeline;
   private GpuBuffer indices;
   private IndexType indexType;
@@ -46,6 +47,8 @@ final class MetalRenderPass implements RenderPassBackend {
     MetalNative.bindPipeline(h(), metal.handle());
     pipeline = metal;
     uniforms = new Object[pipeline.bindings().size()];
+    dirtyUniforms = new boolean[uniforms.length];
+    java.util.Arrays.fill(dirtyUniforms, true);
     bindingsDirty = true;
   }
 
@@ -53,6 +56,7 @@ final class MetalRenderPass implements RenderPassBackend {
     if (index < 0 || index >= uniforms.length)
       throw new IllegalArgumentException("Uniform binding out of range: " + index);
     uniforms[index] = value;
+    dirtyUniforms[index] = true;
     bindingsDirty = true;
   }
 
@@ -100,6 +104,7 @@ final class MetalRenderPass implements RenderPassBackend {
       throw new IllegalStateException("Draw requires a compiled pipeline");
     if (!bindingsDirty) return;
     for (int index = 0; index < pipeline.bindings().size(); index++) {
+      if (!dirtyUniforms[index]) continue;
       var binding = pipeline.bindings().get(index);
       if (binding.stageMask() == 0) continue;
       Object value = uniforms[index];
@@ -140,6 +145,7 @@ final class MetalRenderPass implements RenderPassBackend {
                 buffer.length());
         }
       }
+      dirtyUniforms[index] = false;
     }
     bindingsDirty = false;
   }

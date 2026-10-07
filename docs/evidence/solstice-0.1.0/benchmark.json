@@ -1,0 +1,102 @@
+{
+  "framebufferWidth": 3456,
+  "framebufferHeight": 2168,
+  "vsync": false,
+  "offscreenPresentation": false,
+  "timingPurpose": "normal-client-frame-times",
+  "warmupSeconds": 30.0,
+  "frameIntervals": {
+    "frames": 7347,
+    "seconds": 60.004955334,
+    "meanFps": 122.43988782434846,
+    "meanMs": 8.167273082074317,
+    "p50Ms": 7.995584,
+    "p95Ms": 9.592875,
+    "p99Ms": 11.695209,
+    "maxMs": 1020.302083
+  },
+  "actionPhases": {
+    "observe_before": {
+      "crackFrames": 0,
+      "meshingPendingFrames": 0,
+      "frameIntervals": {
+        "frames": 599,
+        "seconds": 5.003434209,
+        "meanFps": 119.71777282941785,
+        "meanMs": 8.352978646076794,
+        "p50Ms": 8.411834,
+        "p95Ms": 9.513958,
+        "p99Ms": 10.142333,
+        "maxMs": 14.176417
+      },
+      "framesOver33ms": 0,
+      "framesOver50ms": 0,
+      "framesOver100ms": 0
+    },
+    "forest_walk": {
+      "crackFrames": 0,
+      "meshingPendingFrames": 101,
+      "frameIntervals": {
+        "frames": 6150,
+        "seconds": 49.999446,
+        "meanFps": 123.00136285510044,
+        "meanMs": 8.129991219512195,
+        "p50Ms": 7.869583,
+        "p95Ms": 9.624625,
+        "p99Ms": 11.927916,
+        "maxMs": 1020.302083
+      },
+      "framesOver33ms": 1,
+      "framesOver50ms": 1,
+      "framesOver100ms": 1
+    },
+    "observe_after": {
+      "crackFrames": 0,
+      "meshingPendingFrames": 0,
+      "frameIntervals": {
+        "frames": 598,
+        "seconds": 5.002075125,
+        "meanFps": 119.55038360204556,
+        "meanMs": 8.364674122073579,
+        "p50Ms": 8.294125,
+        "p95Ms": 9.52825,
+        "p99Ms": 10.294625,
+        "maxMs": 13.0605
+      },
+      "framesOver33ms": 0,
+      "framesOver50ms": 0,
+      "framesOver100ms": 0
+    }
+  },
+  "nativeExecutionDelta": {
+    "submittedBuffers": 7347,
+    "completedBuffers": 7347,
+    "timedBuffers": 7347,
+    "gpuSpanNanosSum": 49883629491,
+    "uploadRingAcquires": 7347,
+    "uploadRingAcquireNanos": 608434,
+    "drawableAcquires": 7347,
+    "drawableAcquireNanos": 13026692286,
+    "failedBuffers": 0,
+    "unavailableGpuTimes": 0,
+    "uploadRingBlockedAcquires": 0,
+    "drawableTimeouts": 0
+  },
+  "gcCollections": 22,
+  "gcCollectionMillis": 93,
+  "packSha256": "9b08eba16b163d2d9e46177658b3ad4f155e983ba28322530a6c9612ddd48c3a",
+  "run": "solstice-visible-walk-v2",
+  "sourceSha256": "39804b6c34917a451efe79ee2809b598e6dfbe2853b1d9ebc2f4331810b22a9c",
+  "hardware": "Apple M3 Pro, 36 GB unified memory; AC power; low-power mode off",
+  "action": {
+    "walkedDistanceBlocks": 163.07664924665693,
+    "completedWalkLegs": 6
+  },
+  "framesWithin90FpsBudget": 7248,
+  "limitations": [
+    "One run, one forest route; not a guarantee for every scene or sustained thermals.",
+    "One 1020.302083 ms hitch retained in all aggregate statistics; cause not established. Total JVM collection time was 93 ms, which does not explain the hitch by itself.",
+    "Optimized local three-mod configuration; not BSL-equivalent visuals or an unconfigured released profile."
+  ],
+  "rawEvidence": ".research/solstice/solstice-visible-walk-v2.{json,csv,inputs.json,log,png}"
+}

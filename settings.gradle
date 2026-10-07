@@ -3,3 +3,4 @@ pluginManagement {
 }
 rootProject.name = 'minecraft-metal-renderer'
 include 'shader-loader'
+include 'scene-optimizer'

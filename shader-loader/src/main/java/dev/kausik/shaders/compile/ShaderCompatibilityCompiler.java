@@ -84,6 +84,13 @@ public final class ShaderCompatibilityCompiler implements AutoCloseable {
           new TranslatedProgram.Attribute("gl_MultiTexCoord1", "sl_MultiTexCoord1", "vec4", 3),
           new TranslatedProgram.Attribute("gl_Normal", "sl_Normal", "vec3", 4));
   private long compiler = shaderc_compiler_initialize();
+  private final ShadowComparison shadowComparison;
+
+  /** Hardware mode requires a linear, clamp-to-edge LEQUAL comparison sampler at runtime. */
+  public enum ShadowComparison {
+    EMULATED,
+    HARDWARE
+  }
 
   public enum VertexMode {
     GEOMETRY,
@@ -95,14 +102,29 @@ public final class ShaderCompatibilityCompiler implements AutoCloseable {
       String declarations,
       String initialization,
       Map<String, String> legacyExpressions,
-      List<TranslatedProgram.Attribute> attributes) {
+      List<TranslatedProgram.Attribute> attributes,
+      Map<String, UniformLayout.Declaration> uniforms) {
+    public VertexAdapter(
+        String declarations,
+        String initialization,
+        Map<String, String> legacyExpressions,
+        List<TranslatedProgram.Attribute> attributes) {
+      this(declarations, initialization, legacyExpressions, attributes, Map.of());
+    }
+
     public VertexAdapter {
       legacyExpressions = Map.copyOf(legacyExpressions);
       attributes = List.copyOf(attributes);
+      uniforms = Map.copyOf(uniforms);
     }
   }
 
   public ShaderCompatibilityCompiler() {
+    this(ShadowComparison.EMULATED);
+  }
+
+  public ShaderCompatibilityCompiler(ShadowComparison shadowComparison) {
+    this.shadowComparison = java.util.Objects.requireNonNull(shadowComparison);
     if (compiler == 0) throw new IllegalStateException("Cannot initialize shader preprocessor");
   }
 
@@ -130,6 +152,17 @@ public final class ShaderCompatibilityCompiler implements AutoCloseable {
   }
 
   public TranslatedProgram translate(
+      String vertex,
+      String fragment,
+      String label,
+      VertexAdapter adapter,
+      AlphaTestPolicy alphaTest,
+      boolean earlyAlphaDemote) {
+    return translate(
+        vertex, fragment, label, VertexMode.GEOMETRY, adapter, alphaTest, earlyAlphaDemote);
+  }
+
+  public TranslatedProgram translate(
       String vertex, String fragment, String label, VertexMode mode, AlphaTestPolicy alphaTest) {
     return translate(vertex, fragment, label, mode, null, alphaTest);
   }
@@ -141,6 +174,17 @@ public final class ShaderCompatibilityCompiler implements AutoCloseable {
       VertexMode mode,
       VertexAdapter adapter,
       AlphaTestPolicy alphaTest) {
+    return translate(vertex, fragment, label, mode, adapter, alphaTest, false);
+  }
+
+  private synchronized TranslatedProgram translate(
+      String vertex,
+      String fragment,
+      String label,
+      VertexMode mode,
+      VertexAdapter adapter,
+      AlphaTestPolicy alphaTest,
+      boolean earlyAlphaDemote) {
     if (compiler == 0) throw new IllegalStateException("Shader compiler is closed");
     if (mode == VertexMode.FULLSCREEN && alphaTest.enabled())
       throw unsupported(label, "host alpha testing on a screen pass");
@@ -161,6 +205,7 @@ public final class ShaderCompatibilityCompiler implements AutoCloseable {
         vertexBody.replaceAll(
             "\\bftransform\\s*\\(\\s*\\)", "(gl_ModelViewProjectionMatrix * gl_Vertex)");
     if (adapter != null) {
+      adapter.uniforms().forEach((name, declaration) -> merge(uniforms, name, declaration));
       // A single token pass prevents replacement expressions from being recursively rewritten.
       Matcher identifiers = Pattern.compile("\\b[A-Za-z_]\\w*\\b").matcher(vertexBody);
       StringBuffer adapted = new StringBuffer();
@@ -249,10 +294,16 @@ public final class ShaderCompatibilityCompiler implements AutoCloseable {
     }
     if (outputCount > drawBuffers.size())
       throw unsupported(label, "fragment output outside declared DRAWBUFFERS");
+    boolean alphaDemoted = false;
     if (alphaTest.enabled()) {
       if (outputCount == 0)
         throw unsupported(label, "host alpha testing without color output zero");
       merge(uniforms, "alphaTestRef", new UniformLayout.Declaration("float", 0));
+      if (earlyAlphaDemote) {
+        var demotion = EarlyAlphaDemotion.apply(fragmentBody, alphaTest);
+        fragmentBody = demotion.source();
+        alphaDemoted = demotion.applied();
+      }
       Matcher fragmentMain = MAIN.matcher(fragmentBody);
       if (!fragmentMain.find())
         throw new IllegalArgumentException("Missing fragment main in " + label);
@@ -272,7 +323,10 @@ public final class ShaderCompatibilityCompiler implements AutoCloseable {
         (name, type) ->
             common
                 .append("uniform ")
-                .append(type.equals("sampler2DShadow") ? "sampler2D" : type)
+                .append(
+                    type.equals("sampler2DShadow") && shadowComparison == ShadowComparison.EMULATED
+                        ? "sampler2D"
+                        : type)
                 .append(' ')
                 .append(name.equals("texture") ? "sl_texture" : name)
                 .append(";\n"));
@@ -342,37 +396,60 @@ public final class ShaderCompatibilityCompiler implements AutoCloseable {
     // Pack matrices and sampled depth remain OpenGL-style; rasterization expects [0, 1] NDC Z.
     entry += "sl_pack_main();\ngl_Position.z = (gl_Position.z + gl_Position.w) * 0.5;\n}\n";
     String compatibility =
-        """
-        // Explicit four-tap comparison filtering preserves linear LEQUAL shadow sampling on
-        // backends whose sampler interface does not expose hardware depth comparisons.
-        float sl_shadowCompare(sampler2D s, vec3 p) {
-          ivec2 extent = textureSize(s, 0);
-          vec2 pixel = p.xy * vec2(extent) - 0.5;
-          ivec2 base = ivec2(floor(pixel));
-          vec2 weight = fract(pixel);
-          ivec2 upper = extent - ivec2(1);
-          float a = step(p.z, texelFetch(s, clamp(base, ivec2(0), upper), 0).r);
-          float b = step(p.z, texelFetch(s, clamp(base + ivec2(1, 0), ivec2(0), upper), 0).r);
-          float c = step(p.z, texelFetch(s, clamp(base + ivec2(0, 1), ivec2(0), upper), 0).r);
-          float d = step(p.z, texelFetch(s, clamp(base + ivec2(1, 1), ivec2(0), upper), 0).r);
-          return mix(mix(a, b, weight.x), mix(c, d, weight.x), weight.y);
-        }
-        vec4 sl_shadow2D(sampler2D s, vec3 p) { return vec4(sl_shadowCompare(s, p)); }
-        """;
-    return new TranslatedProgram(
-        label,
-        escapeMetalKeywords(common + vin.toString() + vout + compatibility + vertexBody + entry),
-        escapeMetalKeywords(common + fin.toString() + fout + compatibility + fragmentBody),
-        layout,
-        samplers.entrySet().stream()
-            .map(e -> new TranslatedProgram.Sampler(e.getKey(), e.getValue()))
-            .toList(),
-        mode == VertexMode.FULLSCREEN
-            ? List.of()
-            : adapter == null ? attributes : adapter.attributes(),
-        drawBuffers,
-        v.metadataSource(),
-        f.metadataSource());
+        shadowComparison == ShadowComparison.HARDWARE
+            ? """
+            float sl_shadowCompare(sampler2DShadow s, vec3 p) { return texture(s, p); }
+            vec4 sl_shadow2D(sampler2DShadow s, vec3 p) { return vec4(sl_shadowCompare(s, p)); }
+            """
+            : """
+            // Explicit four-tap comparison filtering preserves linear LEQUAL shadow sampling on
+            // backends whose sampler interface does not expose hardware depth comparisons.
+            float sl_shadowCompare(sampler2D s, vec3 p) {
+              ivec2 extent = textureSize(s, 0);
+              vec2 pixel = p.xy * vec2(extent) - 0.5;
+              ivec2 base = ivec2(floor(pixel));
+              vec2 weight = fract(pixel);
+              ivec2 upper = extent - ivec2(1);
+              float a = step(p.z, texelFetch(s, clamp(base, ivec2(0), upper), 0).r);
+              float b = step(p.z, texelFetch(s, clamp(base + ivec2(1, 0), ivec2(0), upper), 0).r);
+              float c = step(p.z, texelFetch(s, clamp(base + ivec2(0, 1), ivec2(0), upper), 0).r);
+              float d = step(p.z, texelFetch(s, clamp(base + ivec2(1, 1), ivec2(0), upper), 0).r);
+              return mix(mix(a, b, weight.x), mix(c, d, weight.x), weight.y);
+            }
+            vec4 sl_shadow2D(sampler2D s, vec3 p) { return vec4(sl_shadowCompare(s, p)); }
+            """;
+    TranslatedProgram translated =
+        new TranslatedProgram(
+            label + (alphaDemoted ? "/early_alpha_demote" : ""),
+            escapeMetalKeywords(
+                common + vin.toString() + vout + compatibility + vertexBody + entry),
+            escapeMetalKeywords(
+                (alphaDemoted
+                        ? common
+                            .toString()
+                            .replace(
+                                "#version 450\n",
+                                "#version 450\n"
+                                    + "#extension GL_EXT_demote_to_helper_invocation : require\n")
+                        : common.toString())
+                    + fin
+                    + fout
+                    + compatibility
+                    + fragmentBody),
+            layout,
+            samplers.entrySet().stream()
+                .map(e -> new TranslatedProgram.Sampler(e.getKey(), e.getValue()))
+                .toList(),
+            mode == VertexMode.FULLSCREEN
+                ? List.of()
+                : adapter == null ? attributes : adapter.attributes(),
+            drawBuffers,
+            v.metadataSource(),
+            f.metadataSource());
+    return mode == VertexMode.FULLSCREEN
+            && Boolean.getBoolean("minecraftShaders.liftUniformInitializers")
+        ? UniformInitializerLifting.apply(translated).program()
+        : translated;
   }
 
   public static String samplerShaderName(String name) {
@@ -540,7 +617,7 @@ public final class ShaderCompatibilityCompiler implements AutoCloseable {
     }
   }
 
-  private static String modernize(String source, Map<String, String> samplers) {
+  private String modernize(String source, Map<String, String> samplers) {
     Set<String> comparisonNames = new LinkedHashSet<>();
     samplers.forEach(
         (name, type) -> {
@@ -553,7 +630,8 @@ public final class ShaderCompatibilityCompiler implements AutoCloseable {
           source.replaceAll(
               "\\btexture\\s*\\(\\s*" + Pattern.quote(name) + "\\s*,",
               "sl_shadowCompare(" + name + ",");
-    source = replaceToken(source, "sampler2DShadow", "sampler2D");
+    if (shadowComparison == ShadowComparison.EMULATED)
+      source = replaceToken(source, "sampler2DShadow", "sampler2D");
     if (samplers.containsKey("texture")) source = replaceToken(source, "texture", "sl_texture");
     for (String old : List.of("texture2D", "texture3D", "textureCube"))
       source = replaceToken(source, old, "texture");

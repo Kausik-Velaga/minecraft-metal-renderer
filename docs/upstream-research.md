@@ -1,5 +1,10 @@
 # Upstream interfaces and reference review
 
+The [October 3 optimization source review](performance-source-review.md) adds a separate, pinned
+record of subsequent source inspection. Its [module-boundary proposal](rendering-boundaries.md)
+describes possible future organization; historical implementation references below remain dated
+to their original work.
+
 This project targets released Minecraft **26.3** (September 15, 2026), using its unobfuscated class names. Inspection used the official client JAR and RenderPearl classes supplied through Mojang's version manifest. Decompiled game source is ignored research material and is not part of the deliverable.
 
 ## Backend entry point and SDL

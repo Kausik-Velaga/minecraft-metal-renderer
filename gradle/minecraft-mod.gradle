@@ -1,4 +1,4 @@
-// Shared compilation and packaging conventions for the two independently installed mods.
+// Shared compilation and packaging conventions for the independently installed mods.
 repositories { mavenCentral() }
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"

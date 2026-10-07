@@ -1,5 +1,14 @@
 # License and provenance review
 
+The opening review below is historical. For the October 2026 three-mod suite,
+the original Canopy and Solstice packs are distributed with their own copies of
+the project MIT license. Material recipes contain our annotations and source
+hashes, not vanilla color images or Mojang's material maps. The distribution
+script allowlists only three production JARs and these two packs, excluding
+external research checkouts, BSL, generated third-party shader dumps, Spark and
+Minecraft content. This packaging check is not a new similarity audit or legal
+clearance; the scope qualifications and subsequent research notes still apply.
+
 Review date: **October 2, 2026**. Source baseline: [`406a75eb1c9b033fb7628843762ef2a833de8fb0`](https://github.com/Kausik-Velaga/minecraft-metal-renderer/tree/406a75eb1c9b033fb7628843762ef2a833de8fb0), version **0.2.0**. This review adds documentation and upstream license notices; it does not change the implementation.
 
 **Finding:** this scoped review identified no distinctive copied implementation in the compared source corpora and no concrete reason to replace MIT for the project's own licensable material. It did identify upstream Gradle tooling that must retain its Apache license. This is an AI-assisted technical review, not an independent legal opinion or a certification that the project is plagiarism-free.
@@ -69,3 +78,18 @@ and generated translations are excluded from both the repository and release art
 obtain their own pack and the loader processes it locally. The validation screenshots show actual
 game output; they are not copies of pack source or assets. The initial support target is one
 pack version at its default options, not a certification of general compatibility or legal status.
+
+## October 3, 2026 source-research addition
+
+The user subsequently authorized implementation inspection to record optimization approaches,
+without copying code. The [source-research register](performance-source-review.md) records selected
+paths in nine projects, their exact revisions, license checks and the resulting prose observations.
+This includes Iris shader-runtime implementation, so the earlier statement about no competing
+loader source applies to the historical 0.1.0 addition, not to all subsequent research.
+
+This pass changed documentation only. External code remains ignored research material and is not
+incorporated into production or release artifacts. Current Sodium and Entity Culling implementations,
+and C2ME's proprietary OpenCL subtree, were excluded from this pass. Some inspected files reference
+other upstream authors/licenses, as recorded in the research notes. This was source-informed
+research, not a clean-room process; no new similarity scan or legal clearance is claimed. Future
+implementation needs its own provenance review if protected upstream expression is incorporated.

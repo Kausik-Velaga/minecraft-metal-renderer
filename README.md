@@ -11,11 +11,11 @@ An experimental Fabric mod that renders **Minecraft Java 26.3** using Apple's Me
 
 ## Download
 
-**[Minecraft Metal 0.2.1](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/download/v0.2.1/minecraft-metal-renderer-0.2.1.jar)** · **[Optional Shader Loader 0.1.0](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/download/v0.2.1/minecraft-shader-loader-0.1.0.jar)** · [Release notes](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/tag/v0.2.1)
+**[Download the complete suite 0.2.2](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/download/v0.2.2/minecraft-metal-suite-0.2.2.zip)** · [Release notes and individual downloads](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/tag/v0.2.2)
 
-The renderer works on its own. To use **BSL 10.1.8**, install both JARs and follow the [shader-pack setup](docs/shader-loader.md). Obtain the pack separately; it is not included.
+The bundle includes **Minecraft Metal 0.2.2**, **Shader Loader 0.1.3**, **Scene Optimizer 0.1.0**, and our original **Canopy 0.2.0** and **Solstice 0.1.0** shader packs. Canopy is preselected in the supplied configuration. **BSL is not bundled.** The renderer also works on its own; both companions are optional and require the renderer.
 
-This is an **experimental prerelease**. Use a separate launcher profile for your first try. Download the mod `.jar`; GitHub's **Source code** archives are for developers and cannot be installed as mods.
+This is an **experimental prerelease**. Use a separate launcher profile for your first try. Extract the suite ZIP once and follow its `INSTALL.txt`, or download individual mod `.jar` files. GitHub's **Source code** archives are for developers and cannot be installed as mods.
 
 The earlier renderer 0.2.0 is also available on **[Nexus Mods](https://www.nexusmods.com/minecraft/mods/1362)** as a ZIP: extract that outer ZIP once and install the enclosed JAR. See the [Nexus installation notes](docs/installation.md#nexus-mods-downloads).
 
@@ -37,8 +37,8 @@ The earlier renderer 0.2.0 is also available on **[Nexus Mods](https://www.nexus
 
 1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for **Minecraft 26.3**. If your launcher supports installing Fabric directly, select it when creating a new instance.
 2. Create a separate profile or instance for testing, using Fabric Loader **0.19.5**. Start with no other mods or resource packs.
-3. Download the JAR above and put it in that profile's **`mods` folder**. Create the folder if needed. Keep the JAR intact; do not open or unzip it.
-4. Launch the Fabric profile. **Metal activates automatically.**
+3. Extract the suite ZIP once. Copy its three intact JARs into **`mods`**, its two shader ZIPs into **`shaderpacks`**, and its configuration into **`config`**. For updates, edit your existing configuration instead of replacing it. See `INSTALL.txt` in the bundle.
+4. Launch the Fabric profile. **Metal and Canopy activate automatically.** Switch to Solstice through the [shader configuration](docs/shader-loader.md), then restart.
 
 Need help finding the folder or setting up the official launcher? See the [step-by-step installation guide](docs/installation.md).
 
@@ -48,14 +48,14 @@ To uninstall, close the game and remove the JAR from `mods`. Remove any older Mi
 
 The renderer was tested on an **Apple M3 Pro** in Minecraft 26.3 worlds. Checks covered terrain, water, glass, entities, particles, inventory, lighting, Improved Transparency, resource reload, resizing, and fullscreen transitions. A clean official-launcher profile also passed a user-performed visual walkthrough with only this mod and Fabric Loader installed.
 
-The 0.2.1 / 0.1.0 pair adds BSL scene, dimension, GPU, and packaged-installation checks; see [shader validation and measured frame times](docs/shader-validation.md).
+The 0.2.2 suite adds the scene optimizer, two original packs and material-map support. See [release validation and limits](docs/releases/0.2.2.md) and [material testing](docs/materials.md). The measured 113.64 FPS Canopy forest run used optional tuning and included a 517 ms hitch; see [the exact settings](docs/releases/performance-settings.md).
 
 See [renderer screenshots and validation details](docs/validation.md) and the [clean-install report](docs/launcher-validation.md). These checks cover specific scenes and one hardware configuration. **No comparative FPS improvement has been established.**
 
 ## Compatibility
 
 - **Client-only:** install on the Mac running the game, not on a server.
-- **BSL 10.1.8 defaults** are the initial target of the optional Shader Loader; see [tested configurations and limits](docs/shader-validation.md). Other packs, Sodium, Iris, and rendering replacements are unverified.
+- **Canopy 0.2.0 and Solstice 0.1.0** are included and tested with this loader. Historical BSL checks are recorded in [shader validation](docs/shader-validation.md); BSL must be obtained separately. Arbitrary packs, Sodium, Iris and other rendering replacements remain unverified.
 - Third-party resource packs, other Mac models, and extended gameplay have not been broadly tested.
 - Mods that require OpenGL or Vulkan internals may not work with this renderer.
 
@@ -82,13 +82,21 @@ Include your Mac chip, macOS and game versions, other mods, reproduction steps, 
 
 Build tools and commands are in the [development guide](docs/development.md). Players can use the download above without building from source.
 
-The repository also contains a separate **shader-loader module** in `shader-loader/`.
-A root `build` produces two independently installed mod JARs. Minecraft Metal remains usable on its
-own; the optional loader requires it. Paired releases state the tested renderer, loader, game, and
-pack versions. See the [module boundaries](docs/architecture.md#two-mods-in-one-repository)
+The source tree now builds three separate mod JARs: the Metal backend, `shader-loader/`, and
+`scene-optimizer/`. The loader and scene optimizer each require the backend and can be installed
+independently of one another. All three are included in the release above. Releases state the
+tested mod, game, and pack versions.
+See the [module boundaries](docs/architecture.md#three-mods-in-one-repository)
 and [shader development instructions](docs/development.md#shader-pack-validation).
 
+The release includes two original native-resolution shader packs:
+**[Solstice](docs/solstice.md)** for lightweight lighting, shadows, water and bloom, and
+**[Canopy](docs/canopy.md)** for a Vibrant Visuals-inspired look with material highlights,
+biome atmosphere, block clouds and water reflections. Both use the matching loader in the suite.
+
 - [Architecture](docs/architecture.md)
+- [Renderer, shader runtime and scene optimization boundaries](docs/rendering-boundaries.md)
+- [Performance-mod source research and license scope](docs/performance-source-review.md)
 - [Validation and known limitations](docs/validation.md)
 - [Upstream research and reference credits](docs/upstream-research.md)
 - [Contributing](CONTRIBUTING.md)

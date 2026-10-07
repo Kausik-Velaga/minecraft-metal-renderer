@@ -20,12 +20,26 @@ import org.joml.Vector4f;
 
 /** CPU-only program discovery and validation complete before allocating a new frame graph. */
 public final class PackPrograms implements AutoCloseable {
+  private static final boolean EARLY_ALPHA_DEMOTE =
+      Boolean.getBoolean("minecraftShaders.earlyAlphaDemote");
+
   public record Source(
       String name,
       String vertex,
       String fragment,
       TranslatedProgram translated,
-      ShaderDirectives directives) {}
+      ShaderDirectives directives,
+      boolean relaxedFragmentMath) {
+    /** External/test/derived sources do not inherit a pack's opt-in policy implicitly. */
+    public Source(
+        String name,
+        String vertex,
+        String fragment,
+        TranslatedProgram translated,
+        ShaderDirectives directives) {
+      this(name, vertex, fragment, translated, directives, false);
+    }
+  }
 
   private static final Map<String, String> FALLBACK =
       Map.ofEntries(
@@ -54,10 +68,23 @@ public final class PackPrograms implements AutoCloseable {
   public final ShaderProperties properties;
   public final String directory;
   public final ShaderDirectives globals;
+  public final ShadowCullingEligibility.Result shadowCullingEligibility;
+  public final boolean relaxedFragmentMath;
   private final Map<String, Source> sources = new HashMap<>();
+  private final Set<String> samplers = new HashSet<>();
+  private final Set<String> postSamplers = new HashSet<>();
   private final ShaderCompatibilityCompiler compiler;
 
   public PackPrograms(ShaderPack pack, Map<String, String> options, String dimension)
+      throws ShaderPackException {
+    this(pack, options, dimension, ShaderCompatibilityCompiler.ShadowComparison.EMULATED);
+  }
+
+  public PackPrograms(
+      ShaderPack pack,
+      Map<String, String> options,
+      String dimension,
+      ShaderCompatibilityCompiler.ShadowComparison shadowComparison)
       throws ShaderPackException {
     this.pack = pack;
     this.options = Map.copyOf(options);
@@ -67,11 +94,19 @@ public final class PackPrograms implements AutoCloseable {
     Map<String, String> constants = new TreeMap<>();
     Map<String, String> definitions = pack.definitions(options, environment);
     Map<String, String> effectiveOptions = pack.optionValues(options);
+    shadowCullingEligibility =
+        ShadowCullingEligibility.assess(pack, options, dimension, environment);
+    // The same immutable content/defaults/environment identity was used for the BSL image audit.
+    // This is a bounded experiment, not a policy inferred from a pack name or shader style.
+    relaxedFragmentMath =
+        Boolean.getBoolean("minecraftShaders.relaxedFragmentMath")
+            && shadowCullingEligibility.eligible()
+            && shadowComparison == ShaderCompatibilityCompiler.ShadowComparison.HARDWARE;
     for (String property : properties.values().keySet()) {
       if (property.startsWith("size.buffer.")) throw unsupported("pack configuration", property);
     }
     // Validate properties/options before taking ownership of the native preprocessor.
-    compiler = new ShaderCompatibilityCompiler();
+    compiler = new ShaderCompatibilityCompiler(shadowComparison);
     try {
       for (ShaderProgram program : pack.programs(directory)) {
         if (program.name().startsWith("dh_") || program.name().startsWith("voxy")) continue;
@@ -100,6 +135,11 @@ public final class PackPrograms implements AutoCloseable {
                     ? ShaderCompatibilityCompiler.VertexMode.FULLSCREEN
                     : ShaderCompatibilityCompiler.VertexMode.GEOMETRY);
         validateFocusSupport(translated, effectiveOptions);
+        for (var sampler : translated.samplers()) {
+          samplers.add(sampler.name());
+          if (program.name().equals("final") || program.name().matches("composite[0-9]*"))
+            postSamplers.add(sampler.name());
+        }
         ShaderDirectives v = ShaderDirectives.parse(translated.preprocessedVertex());
         ShaderDirectives f = ShaderDirectives.parse(translated.preprocessedFragment());
         Map<String, String> local = new TreeMap<>(v.constants());
@@ -121,7 +161,8 @@ public final class PackPrograms implements AutoCloseable {
                 vertex,
                 fragment,
                 translated,
-                new ShaderDirectives(translated.drawBuffers(), local)));
+                new ShaderDirectives(translated.drawBuffers(), local),
+                relaxedFragmentMath));
       }
       globals = new ShaderDirectives(List.of(), constants);
     } catch (Throwable failure) {
@@ -191,6 +232,14 @@ public final class PackPrograms implements AutoCloseable {
     return sources.get(name);
   }
 
+  public boolean readsSampler(String name) {
+    return samplers.contains(name);
+  }
+
+  public boolean postReadsSampler(String name) {
+    return postSamplers.contains(name);
+  }
+
   public Source resolve(String name) {
     Set<String> visited = new HashSet<>();
     while (name != null && visited.add(name)) {
@@ -224,7 +273,14 @@ public final class PackPrograms implements AutoCloseable {
       ShaderCompatibilityCompiler.VertexAdapter adapter,
       dev.kausik.shaders.pack.AlphaTestPolicy alphaTest) {
     return compiler.translate(
-        source.vertex(), source.fragment(), directory + "/" + source.name(), adapter, alphaTest);
+        source.vertex(),
+        source.fragment(),
+        directory + "/" + source.name(),
+        adapter,
+        alphaTest,
+        EARLY_ALPHA_DEMOTE
+            && shadowCullingEligibility.eligible()
+            && source.name().equals("gbuffers_terrain"));
   }
 
   public Map<Integer, PackRenderTargets.BufferSpec> bufferSpecifications()

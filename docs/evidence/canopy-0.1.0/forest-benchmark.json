@@ -1,0 +1,124 @@
+{
+  "label": "canopy-visible-walk",
+  "device": "Apple M3 Pro",
+  "minecraftVersion": "26.3",
+  "framebufferWidth": 3456,
+  "framebufferHeight": 2168,
+  "viewDistanceChunks": 16,
+  "simulationDistanceChunks": 12,
+  "warmupSeconds": 30.0,
+  "requestedMeasurementSeconds": 60.0,
+  "vsync": false,
+  "frameLimit": "unlimited",
+  "offscreenPresentation": false,
+  "frameIntervals": {
+    "frames": 6806,
+    "seconds": 60.007326125,
+    "meanFps": 113.41948457797577,
+    "meanMs": 8.81682722965031,
+    "p50Ms": 8.456833,
+    "p95Ms": 10.670916,
+    "p99Ms": 13.221625,
+    "maxMs": 781.957459
+  },
+  "gcCollections": 28,
+  "gcCollectionMillis": 123,
+  "packSha256": "205b24849bf057a19d5e6b117c6d38e4738758f0af05113c37a36db38f7793da",
+  "nativeExecutionDelta": {
+    "submittedBuffers": 6806,
+    "completedBuffers": 6806,
+    "timedBuffers": 6806,
+    "gpuSpanNanosSum": 60889743067,
+    "uploadRingAcquires": 6806,
+    "uploadRingAcquireNanos": 477195,
+    "drawableAcquires": 6806,
+    "drawableAcquireNanos": 10924244036,
+    "failedBuffers": 0,
+    "unavailableGpuTimes": 0,
+    "uploadRingBlockedAcquires": 0,
+    "drawableTimeouts": 0
+  },
+  "actionPhases": {
+    "observe_before": {
+      "framesOver33ms": 0,
+      "frameIntervals": {
+        "frames": 596,
+        "seconds": 5.0076735,
+        "meanFps": 119.0173440820373,
+        "meanMs": 8.402136744966443,
+        "p50Ms": 8.363542,
+        "p95Ms": 9.554458,
+        "p99Ms": 10.146583,
+        "maxMs": 15.438708
+      },
+      "meshingPendingFrames": 0,
+      "crackFrames": 0,
+      "framesOver100ms": 0,
+      "framesOver50ms": 0
+    },
+    "forest_walk": {
+      "framesOver33ms": 2,
+      "frameIntervals": {
+        "frames": 5615,
+        "seconds": 49.99451825,
+        "meanFps": 112.31231336047527,
+        "meanMs": 8.903743232413179,
+        "p50Ms": 8.498625,
+        "p95Ms": 10.875958,
+        "p99Ms": 13.734125,
+        "maxMs": 781.957459
+      },
+      "meshingPendingFrames": 78,
+      "crackFrames": 0,
+      "framesOver100ms": 1,
+      "framesOver50ms": 1
+    },
+    "observe_after": {
+      "framesOver33ms": 0,
+      "frameIntervals": {
+        "frames": 595,
+        "seconds": 5.005134375,
+        "meanFps": 118.87792722847726,
+        "meanMs": 8.411990546218487,
+        "p50Ms": 8.357417,
+        "p95Ms": 9.532208,
+        "p99Ms": 10.570416,
+        "maxMs": 15.373333
+      },
+      "meshingPendingFrames": 0,
+      "crackFrames": 0,
+      "framesOver100ms": 0,
+      "framesOver50ms": 0
+    }
+  },
+  "action": {
+    "completedWalkLegs": 6,
+    "walkedDistanceBlocks": 151.89727405016959
+  },
+  "framesWithin90FpsBudget": 6561,
+  "hostPowerContext": {
+    "capturedUtc": "2026-10-07T06:12:56.840456Z",
+    "notes": "Prelaunch read-only snapshot; not a continuous thermal or power trace.",
+    "batt": {
+      "exitCode": 0,
+      "output": "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=22872163)\t100%; discharging; 3:36 remaining present: true"
+    },
+    "custom": {
+      "exitCode": 0,
+      "output": "Battery Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         2\n womp                 0\n networkoversleep     0\n sleep                1\n lessbright           1\n tcpkeepalive         1\n disksleep            10\nAC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         10\n womp                 1\n networkoversleep     0\n sleep                1\n tcpkeepalive         1\n disksleep            10"
+    },
+    "therm": {
+      "exitCode": 0,
+      "output": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+    }
+  },
+  "sources": {
+    "sha256": "db867e11e76857e6c52b9b58479dc2cd701247da3ef45fb8cb3e40698c0935fd"
+  },
+  "limitations": [
+    "One run and route; not a locked FPS or long-session thermal guarantee.",
+    "One 781.96 ms hitch at 40.19 seconds, with no meshing pending; cause not established. All frames retained.",
+    "Optimized development three-mod configuration; not an unconfigured published profile."
+  ],
+  "rawEvidence": ".research/vibrant-visuals/benchmarks/canopy-visible-walk.{json,csv,inputs.json,log,png}"
+}

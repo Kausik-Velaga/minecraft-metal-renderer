@@ -26,6 +26,7 @@ public final class PackProgramsValidationTest {
     verifyMipmapRollback();
     verifyImagePreflight();
     verifyUnsupportedRendering();
+    verifySamplerDependencies();
     String vertex = "#version 120\nvoid main(){ gl_Position=gl_Vertex; }";
     String fragment =
         """
@@ -84,6 +85,48 @@ public final class PackProgramsValidationTest {
     System.out.println(
         "PASS: active unsupported rendering declarations are rejected; failed sampler/pipeline"
             + " creation releases resources; image dimensions are checked before decoding");
+  }
+
+  private static void verifySamplerDependencies() throws Exception {
+    Path folder = Files.createTempDirectory("pack-depth-dependencies");
+    try {
+      Path shaders = Files.createDirectories(folder.resolve("shaders"));
+      String vertex = "#version 120\nvoid main(){gl_Position=gl_Vertex;}\n";
+      for (String name : new String[] {"gbuffers_basic", "composite", "final"}) {
+        Files.writeString(shaders.resolve(name + ".vsh"), vertex);
+        String sampler =
+            switch (name) {
+              case "gbuffers_basic" -> "depthtex2";
+              case "composite" -> "depthtex0";
+              default -> "shadowtex1";
+            };
+        Files.writeString(
+            shaders.resolve(name + ".fsh"),
+            "#version 120\nuniform sampler2D "
+                + sampler
+                + ";\nvoid main(){gl_FragColor=texture2D("
+                + sampler
+                + ",vec2(0.5));}\n");
+      }
+      try (var programs =
+          new PackPrograms(ShaderPack.load(folder), Map.of(), "minecraft:overworld")) {
+        if (!programs.readsSampler("depthtex2")
+            || programs.postReadsSampler("depthtex2")
+            || !programs.postReadsSampler("depthtex0")
+            || !programs.readsSampler("shadowtex1"))
+          throw new AssertionError("Required scene/post depth resources were pruned");
+      }
+      Files.writeString(shaders.resolve("shaders.properties"), "program.composite.enabled=false\n");
+      try (var programs =
+          new PackPrograms(ShaderPack.load(folder), Map.of(), "minecraft:overworld")) {
+        if (programs.readsSampler("depthtex0") || programs.postReadsSampler("depthtex0"))
+          throw new AssertionError("Disabled passes must not require a hand-depth merge");
+      }
+    } finally {
+      try (var paths = Files.walk(folder)) {
+        for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);
+      }
+    }
   }
 
   private static void verifyUnsupportedRendering() throws Exception {

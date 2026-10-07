@@ -1,0 +1,318 @@
+{
+  "version": 1,
+  "presets": {
+    "stone": {
+      "roughness": 1
+    },
+    "iron": {
+      "metalness": 0.9,
+      "roughness": 0.38
+    },
+    "gold": {
+      "metalness": 0.95,
+      "roughness": 0.28
+    },
+    "copper": {
+      "metalness": 0.9,
+      "roughness": 0.35
+    },
+    "gem": {
+      "roughness": 0.22,
+      "metalness": 0.04
+    },
+    "polished": {
+      "roughness": 0.58
+    },
+    "ice": {
+      "roughness": 0.22,
+      "subsurface": 0.18
+    },
+    "glass": {
+      "roughness": 0.25
+    },
+    "foliage": {
+      "roughness": 1,
+      "subsurface": 0.65
+    },
+    "lamp_frame": {
+      "roughness": 0.9
+    },
+    "lamp_glass": {
+      "roughness": 0.3
+    },
+    "lamp_lit": {
+      "roughness": 0.3,
+      "emission": 0.85
+    },
+    "fire": {
+      "roughness": 1,
+      "emission": 0.85
+    },
+    "glowing_surface": {
+      "roughness": 0.65,
+      "emission": 0.75
+    }
+  },
+  "sprites": {
+    "minecraft:block/iron_block": {
+      "preset": "iron"
+    },
+    "minecraft:block/gold_block": {
+      "preset": "gold"
+    },
+    "minecraft:block/copper_block": {
+      "preset": "copper"
+    },
+    "minecraft:block/cut_copper": {
+      "preset": "copper"
+    },
+    "minecraft:block/chiseled_copper": {
+      "preset": "copper"
+    },
+    "minecraft:block/copper_grate": {
+      "preset": "copper"
+    },
+    "minecraft:block/diamond_block": {
+      "preset": "gem"
+    },
+    "minecraft:block/emerald_block": {
+      "preset": "gem"
+    },
+    "minecraft:block/amethyst_block": {
+      "preset": "gem"
+    },
+    "minecraft:block/budding_amethyst": {
+      "preset": "gem"
+    },
+    "minecraft:block/polished_andesite": {
+      "preset": "polished"
+    },
+    "minecraft:block/polished_diorite": {
+      "preset": "polished"
+    },
+    "minecraft:block/polished_granite": {
+      "preset": "polished"
+    },
+    "minecraft:block/polished_deepslate": {
+      "preset": "polished"
+    },
+    "minecraft:block/polished_blackstone": {
+      "preset": "polished"
+    },
+    "minecraft:block/smooth_stone": {
+      "preset": "polished"
+    },
+    "minecraft:block/quartz_block_side": {
+      "preset": "polished"
+    },
+    "minecraft:block/quartz_block_top": {
+      "preset": "polished"
+    },
+    "minecraft:block/obsidian": {
+      "preset": "polished"
+    },
+    "minecraft:block/ice": {
+      "preset": "ice"
+    },
+    "minecraft:block/packed_ice": {
+      "preset": "ice"
+    },
+    "minecraft:block/blue_ice": {
+      "preset": "ice"
+    },
+    "minecraft:block/glass": {
+      "preset": "glass"
+    },
+    "minecraft:block/white_stained_glass": {
+      "preset": "glass"
+    },
+    "minecraft:block/cyan_stained_glass": {
+      "preset": "glass"
+    },
+    "minecraft:block/blue_stained_glass": {
+      "preset": "glass"
+    },
+    "minecraft:block/light_blue_stained_glass": {
+      "preset": "glass"
+    },
+    "minecraft:block/oak_leaves": {
+      "preset": "foliage"
+    },
+    "minecraft:block/birch_leaves": {
+      "preset": "foliage"
+    },
+    "minecraft:block/spruce_leaves": {
+      "preset": "foliage"
+    },
+    "minecraft:block/jungle_leaves": {
+      "preset": "foliage"
+    },
+    "minecraft:block/acacia_leaves": {
+      "preset": "foliage"
+    },
+    "minecraft:block/dark_oak_leaves": {
+      "preset": "foliage"
+    },
+    "minecraft:block/mangrove_leaves": {
+      "preset": "foliage"
+    },
+    "minecraft:block/cherry_leaves": {
+      "preset": "foliage"
+    },
+    "minecraft:block/pale_oak_leaves": {
+      "preset": "foliage"
+    },
+    "minecraft:block/azalea_leaves": {
+      "preset": "foliage"
+    },
+    "minecraft:block/flowering_azalea_leaves": {
+      "preset": "foliage"
+    },
+    "minecraft:block/lava_still": {
+      "preset": "fire"
+    },
+    "minecraft:block/lava_flow": {
+      "preset": "fire"
+    },
+    "minecraft:block/fire_0": {
+      "preset": "fire"
+    },
+    "minecraft:block/fire_1": {
+      "preset": "fire"
+    },
+    "minecraft:block/soul_fire_0": {
+      "preset": "fire"
+    },
+    "minecraft:block/soul_fire_1": {
+      "preset": "fire"
+    },
+    "minecraft:block/sea_lantern": {
+      "preset": "glowing_surface"
+    },
+    "minecraft:block/iron_ore": {
+      "albedoSha256": "72fb64f5a1c7ef0c356b1510b84174576d8cca5ae1de3bb9fa41e3dd1a7a2719",
+      "legend": {
+        ".": "stone",
+        "M": "iron"
+      },
+      "mask": [
+        "................",
+        "..........MMMM..",
+        "..MMM......MM...",
+        ".MMM............",
+        ".......MMMMM....",
+        "....MMMMMMM..MM.",
+        "......MMM.......",
+        "................",
+        "...MM....MMMM...",
+        "..MMMMM...MM....",
+        "....MM..........",
+        "...........MM...",
+        "....MM..MMMMMMM.",
+        ".MM......MMMM...",
+        "..MM............",
+        "................"
+      ]
+    },
+    "minecraft:block/gold_ore": {
+      "albedoSha256": "5253e5a8ea32739a5c8cb1d844f0e46c8c85641f77c3d07dcc03645e2914dd1f",
+      "legend": {
+        ".": "stone",
+        "M": "gold"
+      },
+      "mask": [
+        "................",
+        "....M...........",
+        ".......M.....MM.",
+        "......MMM...MMM.",
+        ".....MMMM...MM..",
+        "....MMMMM.......",
+        ".....MMMM.......",
+        "......M......MM.",
+        "..MM..M.........",
+        "..MM............",
+        "..........MMM...",
+        ".........MMMMMM.",
+        "..MMM..M..MMM...",
+        ".MMMMM....MM....",
+        "...MM.........M.",
+        "................"
+      ]
+    },
+    "minecraft:block/diamond_ore": {
+      "albedoSha256": "2ef421308b678d2225aef41affc087ae512a81213a24a98cf456dbe231884122",
+      "legend": {
+        ".": "stone",
+        "M": "gem"
+      },
+      "mask": [
+        "................",
+        "................",
+        "....M.......MM..",
+        ".......MM.......",
+        "................",
+        ".....MM...MM....",
+        "...MMMMM..MM....",
+        "................",
+        ".MM.....MM......",
+        ".......MMMM.....",
+        "....M...........",
+        "...........MM...",
+        "........MMMMMM..",
+        "...MM....MM.....",
+        "................",
+        "................"
+      ]
+    },
+    "minecraft:block/redstone_lamp_on": {
+      "albedoSha256": "7a1179a50639369b828de16d24c37102be44d81d73205a0950e4549f2c53c899",
+      "legend": {
+        ".": "lamp_frame",
+        "M": "lamp_lit"
+      },
+      "mask": [
+        "................",
+        "...MMMM..MMMM...",
+        "..MMMMM..MMMMM..",
+        "..MMMMM..MMMMM..",
+        ".MMMMM.MM.MMMMM.",
+        ".MMMM.MMMM.MMMM.",
+        ".MMM.MMMMMM.MMM.",
+        "....MMMMMMMM....",
+        "....MMMMMMMM....",
+        ".MM..MMMMMM..MM.",
+        ".MMM..MMMM..MMM.",
+        ".MMMM..MM..MMMM.",
+        ".MMMMM....MMMMM.",
+        "..MMMMM..MMMMM..",
+        "....MMM..MMM....",
+        "................"
+      ]
+    },
+    "minecraft:block/redstone_lamp": {
+      "albedoSha256": "60d43bc037630fdf7a770f31e10a59312609f084fcabe73725030036611de84a",
+      "legend": {
+        ".": "lamp_frame",
+        "M": "lamp_glass"
+      },
+      "mask": [
+        "................",
+        "...MMMM..MMMM...",
+        "..MMMMM..MMMMM..",
+        "..MMMMM..MMMMM..",
+        ".MMMMM.MM.MMMMM.",
+        ".MMMM.MMMM.MMMM.",
+        ".MMM.MMMMMM.MMM.",
+        "....MMMMMMMM....",
+        "....MMMMMMMM....",
+        ".MM..MMMMMM..MM.",
+        ".MMM..MMMM..MMM.",
+        ".MMMM..MM..MMMM.",
+        ".MMMMM....MMMMM.",
+        "..MMMMM..MMMMM..",
+        "....MMM..MMM....",
+        "................"
+      ]
+    }
+  }
+}

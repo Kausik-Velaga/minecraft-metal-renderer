@@ -1,0 +1,13 @@
+Canopy 0.2.0 material atlas validation — 2026-10-06
+PASS: 493 native Metal pipeline variants with optimized fragment/vertex shaders and hardware shadows.
+PASS: material recipe semantics, lamp emission, source/dimension/animation guards, padding, linear mipmaps and invalid inputs.
+PASS: material gallery, reload, steady-state generation count, real resource-pack override, stale albedo mask rejection, restoration.
+PASS: full gameplay scenario, including particles, entities, block entities, leaf breaking, resize, resource reload, water, text, held-item glint and fire.
+PASS: natural terrain and Overworld -> Nether -> End -> Overworld transitions. One material atlas generation across all dimensions.
+PASS: existing Solstice pack contract. Previous Canopy control allocates zero atlas bytes.
+Visible native-resolution forest walking: 113.64 FPS over 60s after 30s warmup. Six legs / 152.8 blocks. Atlas generations 1 -> 1.
+Unresolved 517.12 ms hitch retained in all statistics. Not a locked 90 FPS result.
+Both the published reference screenshots and vanilla color art are excluded from the pack archive.
+
+Pack SHA-256: aff285f2a8e890aeab23b1af8e4e1ad9a0cfcdb2e1ddc1af93db0e391d44b3ec
+Loader JAR SHA-256: d58b7b6b58b1f4df7a4bb0d3aa96d2e8118edc298a388b050ceb8cc5eaa408ca

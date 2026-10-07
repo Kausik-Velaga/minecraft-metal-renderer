@@ -45,6 +45,118 @@ tasks.register('nativeSmokeTest', JavaExec) {
     environment 'MTL_DEBUG_LAYER', '1'
 }
 
+tasks.register('icbSmokeTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.metal.IcbSmokeTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    environment 'MTL_DEBUG_LAYER', '1'
+}
+
+['icbReuseDisabledTest': '0', 'icbReuseTest': '1'].each { taskName, reuse ->
+    tasks.register(taskName, JavaExec) {
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = 'dev.kausik.metal.IcbReuseSmokeTest'
+        jvmArgs '--enable-native-access=ALL-UNNAMED'
+        environment 'MTL_DEBUG_LAYER', '1'
+        environment 'MINECRAFT_METAL_ICB_REUSE', reuse
+        environment 'MINECRAFT_METAL_TRACKED_HAZARDS', '1'
+    }
+    check { dependsOn taskName }
+}
+
+['cpuIcbTest': '0', 'cpuIcbReuseTest': '1'].each { taskName, reuse ->
+    tasks.register(taskName, JavaExec) {
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = 'dev.kausik.metal.IcbReuseSmokeTest'
+        jvmArgs '--enable-native-access=ALL-UNNAMED'
+        environment 'MTL_DEBUG_LAYER', '1'
+        environment 'MINECRAFT_METAL_CPU_ICB', '1'
+        environment 'MINECRAFT_METAL_ICB_REUSE', reuse
+        environment 'MINECRAFT_METAL_TRACKED_HAZARDS', '1'
+    }
+    check { dependsOn taskName }
+}
+
+['hazardSynchronizationTest': '0', 'trackedHazardSynchronizationTest': '1'].each { taskName, tracked ->
+    tasks.register(taskName, JavaExec) {
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = 'dev.kausik.metal.HazardSynchronizationTest'
+        jvmArgs '--enable-native-access=ALL-UNNAMED'
+        environment 'MTL_DEBUG_LAYER', '1'
+        environment 'MINECRAFT_METAL_TRACKED_HAZARDS', tracked
+    }
+    check { dependsOn taskName }
+}
+
+['executionStatisticsTest': '0', 'trackedExecutionStatisticsTest': '1'].each { taskName, tracked ->
+    tasks.register(taskName, JavaExec) {
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = 'dev.kausik.metal.ExecutionStatisticsTest'
+        jvmArgs '--enable-native-access=ALL-UNNAMED'
+        environment 'MTL_DEBUG_LAYER', '1'
+        environment 'MINECRAFT_METAL_TRACKED_HAZARDS', tracked
+    }
+    check { dependsOn taskName }
+}
+
+['uniformBindingSmokeTest': false, 'uniformBindingIcbTest': true].each { taskName, useIcb ->
+    tasks.register(taskName, JavaExec) {
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = 'dev.kausik.metal.UniformBindingSmokeTest'
+        jvmArgs '--enable-native-access=ALL-UNNAMED', "-DminecraftMetal.indirectCommandBuffers=${useIcb}"
+        environment 'MTL_DEBUG_LAYER', '1'
+    }
+    check { dependsOn taskName }
+}
+
+['activeStageResourcesTest': false, 'activeStageResourcesIcbTest': true].each { taskName, useIcb ->
+    tasks.register(taskName, JavaExec) {
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = 'dev.kausik.metal.ActiveStageResourcesSmokeTest'
+        jvmArgs '--enable-native-access=ALL-UNNAMED', "-DminecraftMetal.indirectCommandBuffers=${useIcb}"
+        environment 'MTL_DEBUG_LAYER', '1'
+    }
+    check { dependsOn taskName }
+}
+
+['metalPassHintsTest': 'MetalPassHintsTest',
+ 'metalPipelineMathTest': 'MetalPipelineMathTest',
+ 'attachmentDiscardTest': 'AttachmentDiscardSmokeTest',
+ 'renderStageTimingsTest': 'ActiveStageResourcesSmokeTest'].each { taskName, testClass ->
+    tasks.register(taskName, JavaExec) {
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = "dev.kausik.metal.${testClass}"
+        jvmArgs '--enable-native-access=ALL-UNNAMED'
+        environment 'MTL_DEBUG_LAYER', '1'
+        environment 'MINECRAFT_METAL_TRACKED_HAZARDS', '1'
+        if (taskName == 'renderStageTimingsTest') {
+            environment 'MINECRAFT_METAL_RENDER_STAGE_TIMINGS', '1'
+            jvmArgs '-DminecraftMetal.indirectCommandBuffers=true'
+        }
+    }
+    check { dependsOn taskName }
+}
+
+['scopedFragmentMathTest': 'safe', 'scopedFragmentMathLegacyTest': 'relaxed'].each { taskName, legacyMode ->
+    tasks.register(taskName, JavaExec) {
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = 'dev.kausik.metal.ScopedFragmentMathSmokeTest'
+        jvmArgs '--enable-native-access=ALL-UNNAMED'
+        environment 'MTL_DEBUG_LAYER', '1'
+        environment 'MINECRAFT_METAL_MATH_MODE', legacyMode
+    }
+    check { dependsOn taskName }
+}
+
 // Compiles every shipped vanilla pipeline through shaderc, SPIRV-Cross, and the Metal driver.
 tasks.register('shaderSmokeTest', JavaExec) {
     dependsOn tasks.named('testClasses')
@@ -52,6 +164,8 @@ tasks.register('shaderSmokeTest', JavaExec) {
     mainClass = 'dev.kausik.metal.ShaderSmokeTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
     environment 'MTL_DEBUG_LAYER', '1'
+    if (providers.gradleProperty('metalIndirectCommandBuffers').isPresent())
+        jvmArgs "-DminecraftMetal.indirectCommandBuffers=${providers.gradleProperty('metalIndirectCommandBuffers').get()}"
 }
 
 // Test-only Fabric client harness; never included in the distributed mod jar.
@@ -112,5 +226,5 @@ tasks.named('runClientNaturalGameTest') {
 // GPU tests are executable integration checks rather than JUnit tests.
 test { failOnNoDiscoveredTests = false }
 check {
-    dependsOn 'nativeSmokeTest', 'shaderSmokeTest', 'transientMemorySmokeTest'
+    dependsOn 'nativeSmokeTest', 'shaderSmokeTest', 'transientMemorySmokeTest', 'icbSmokeTest'
 }

@@ -24,6 +24,7 @@ public abstract class TerrainChunkLayerMixin {
 
   @Inject(method = "vertexFormat", at = @At("HEAD"), cancellable = true)
   private void shaders$terrainFormat(CallbackInfoReturnable<VertexFormat> callback) {
-    if (TerrainShaderGeometry.isEnabled()) callback.setReturnValue(TerrainShaderGeometry.FORMAT);
+    if (TerrainShaderGeometry.isEnabled())
+      callback.setReturnValue(TerrainShaderGeometry.layout().format());
   }
 }

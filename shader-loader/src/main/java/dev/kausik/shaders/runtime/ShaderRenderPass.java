@@ -107,7 +107,9 @@ public final class ShaderRenderPass implements RenderPass {
         && (!pipeline.translated().drawBuffers().equals(next.translated().drawBuffers())
             || pipeline.depth() != next.depth()
             || pipeline.depthTarget() != next.depthTarget()
-            || pipeline.shadow() != next.shadow())) suspend();
+            || pipeline.shadow() != next.shadow()
+            || pipeline != next && runtime.requiresMipGeneration(next)
+            || runtime.requiresReadPreparation(next))) suspend();
     pipeline = next;
   }
 

@@ -1,0 +1,77 @@
+{
+  "source": "https://www.minecraft.net/en-us/article/minecraft-vibrant-visuals",
+  "images": [
+    {
+      "url": "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/vv_JungleReflection_1170x500.jpg",
+      "file": "vv_JungleReflection_1170x500.jpg",
+      "bytes": 127420,
+      "sha256": "499aedd1050104a4ded5d3a7abb9b3654c5e17fe1df4a1f3138cb6e8bb477afc"
+    },
+    {
+      "url": "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/vv_Forest_1b_1280x720.jpg",
+      "file": "vv_Forest_1b_1280x720.jpg",
+      "bytes": 241055,
+      "sha256": "abf5db05952059e7b4b8125eb7453a323d45ddd61576172531339261279f4272"
+    },
+    {
+      "url": "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/MCV_VibrantVisuals_MCL_comparison_03_cherrygrove.jpg",
+      "file": "MCV_VibrantVisuals_MCL_comparison_03_cherrygrove.jpg",
+      "bytes": 237902,
+      "sha256": "16c31434d6a30d45e77a1b0f32a3b90dd036133aebb473714e1fb520dc4bc0a5"
+    },
+    {
+      "url": "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/MCV_VibrantVisuals_MCL_comparison_02_mangrovebeach.jpg",
+      "file": "MCV_VibrantVisuals_MCL_comparison_02_mangrovebeach.jpg",
+      "bytes": 268557,
+      "sha256": "1278de4558cd77675e28a3d47352361a78e7d1dba1a0dec670447731c405ef1e"
+    },
+    {
+      "url": "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/MCV_VibrantVisuals_MCL_comparison_01_woodlandmansion.jpg",
+      "file": "MCV_VibrantVisuals_MCL_comparison_01_woodlandmansion.jpg",
+      "bytes": 199999,
+      "sha256": "7d43bb207c11b5bcb30344fb8f87d079e1bb1f2f3435518a2c600dc671421686"
+    },
+    {
+      "url": "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/MCV_VibrantVisuals_MCL_comparison_04_tundra.jpg",
+      "file": "MCV_VibrantVisuals_MCL_comparison_04_tundra.jpg",
+      "bytes": 118981,
+      "sha256": "47359ec90b2d14fb07df29925d0de55eff21624fbfe8d4160b7b7bddedf1925c"
+    },
+    {
+      "url": "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/vv_Desert_1b_1280x720.jpg",
+      "file": "vv_Desert_1b_1280x720.jpg",
+      "bytes": 181586,
+      "sha256": "04a2568785711dc42a7c97678f52d7fa82cf8396a97c355b8249a14cb2f76c31"
+    },
+    {
+      "url": "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/vv_CustomBuild_AG_01_1280x720.jpg",
+      "file": "vv_CustomBuild_AG_01_1280x720.jpg",
+      "bytes": 415360,
+      "sha256": "b5fe522cc04bcc1a0ba5d7d0ce6c46743480a1bdc232c2e06ed7f397ee4bc8f6"
+    },
+    {
+      "url": "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/vv_Tundra_AG_02_1280x720.jpg",
+      "file": "vv_Tundra_AG_02_1280x720.jpg",
+      "bytes": 114829,
+      "sha256": "354795ee0ee5cd62d14753b4fd878b7d78908f19860879a3d2de48f108d0b8e5"
+    },
+    {
+      "url": "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/vv_Mesa_AG_01_1280x720.jpg",
+      "file": "vv_Mesa_AG_01_1280x720.jpg",
+      "bytes": 208412,
+      "sha256": "30053535e0531b89db97a34a270cf37a668c5331c3dff244c81dadce830085a0"
+    },
+    {
+      "url": "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/vv_Plains_2b_1280x720.jpg",
+      "file": "vv_Plains_2b_1280x720.jpg",
+      "bytes": 241523,
+      "sha256": "328537f0131ad3b5ddaf29ab9d369c61089a1c26156ce4b8983ab7cacfb48c14"
+    },
+    {
+      "url": "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/vv_Plains_1b_1280x720.jpg",
+      "file": "vv_Plains_1b_1280x720.jpg",
+      "bytes": 235805,
+      "sha256": "9f4790a26e8c45f115047ed0d48ca54561f18ef3c4f15244aaa1ab70f9846577"
+    }
+  ]
+}

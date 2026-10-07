@@ -9,7 +9,18 @@ public final class TerrainVertexWriter {
   private TerrainVertexWriter() {}
 
   public static void writeMetadata(long pointer, float x, float y, float z) {
+    writeMetadata(pointer, x, y, z, TerrainShaderGeometry.currentBlock().layout());
+  }
+
+  public static void writeMetadata(
+      long pointer, float x, float y, float z, TerrainShaderGeometry.Layout layout) {
     TerrainShaderGeometry.SectionContext context = TerrainShaderGeometry.currentBlock();
+    if (context.layout() != layout)
+      throw new IllegalStateException("Terrain buffer layout differs from its section snapshot");
+    if (layout == TerrainShaderGeometry.Layout.COMPACT) {
+      MemoryUtil.memPutInt(pointer + TerrainShaderGeometry.ENTITY_OFFSET, context.packedMetadata());
+      return;
+    }
     MemoryUtil.memPutFloat(pointer + TerrainShaderGeometry.ENTITY_OFFSET, context.materialId);
     MemoryUtil.memPutFloat(pointer + TerrainShaderGeometry.ENTITY_OFFSET + 4, context.renderType);
     MemoryUtil.memPutFloat(
@@ -29,7 +40,11 @@ public final class TerrainVertexWriter {
 
   /** lastVertex is resolved after buffer growth; never retain pointers across reserve calls. */
   public static void finishQuad(long lastVertex) {
-    int stride = TerrainShaderGeometry.STRIDE;
+    finishQuad(lastVertex, TerrainShaderGeometry.layout());
+  }
+
+  public static void finishQuad(long lastVertex, TerrainShaderGeometry.Layout layout) {
+    int stride = layout.stride();
     long a = lastVertex - 3L * stride;
     long b = a + stride;
     long c = b + stride;
@@ -110,9 +125,9 @@ public final class TerrainVertexWriter {
     for (int vertex = 0; vertex < 4; vertex++) {
       long pointer = a + (long) vertex * stride;
       putNormal(pointer + TerrainShaderGeometry.NORMAL_OFFSET, nx, ny, nz);
-      MemoryUtil.memPutFloat(pointer + TerrainShaderGeometry.MID_UV_OFFSET, midU);
-      MemoryUtil.memPutFloat(pointer + TerrainShaderGeometry.MID_UV_OFFSET + 4, midV);
-      long tangent = pointer + TerrainShaderGeometry.TANGENT_OFFSET;
+      MemoryUtil.memPutFloat(pointer + layout.midUvOffset(), midU);
+      MemoryUtil.memPutFloat(pointer + layout.midUvOffset() + 4, midV);
+      long tangent = pointer + layout.tangentOffset();
       MemoryUtil.memPutByte(tangent, snorm(tx));
       MemoryUtil.memPutByte(tangent + 1, snorm(ty));
       MemoryUtil.memPutByte(tangent + 2, snorm(tz));

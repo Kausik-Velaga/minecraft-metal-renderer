@@ -1,0 +1,16 @@
+plugins {
+    id 'net.fabricmc.fabric-loom'
+    id 'maven-publish'
+}
+version = scene_optimizer_version
+group = 'dev.kausik.sceneoptimizer'
+base { archivesName = 'minecraft-scene-optimizer' }
+apply from: rootProject.file('gradle/minecraft-mod.gradle')
+dependencies { implementation project(':') }
+test { failOnNoDiscoveredTests = false }
+tasks.register('sceneOptimizerTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.sceneoptimizer.SceneOptimizerTest'
+}
+check { dependsOn 'sceneOptimizerTest' }

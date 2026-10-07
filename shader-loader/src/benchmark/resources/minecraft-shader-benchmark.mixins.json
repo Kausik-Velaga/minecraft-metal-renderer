@@ -2,6 +2,18 @@
   "required": true,
   "package": "dev.kausik.shaders.benchmark.mixin",
   "compatibilityLevel": "JAVA_25",
-  "client": ["BenchmarkMinecraftMixin"],
-  "injectors": {"defaultRequire": 1}
+  "client": [
+    "BenchmarkMinecraftMixin",
+    "BenchmarkEntityPushMixin",
+    "BenchmarkMouseInputMixin",
+    "BenchmarkKeyboardInputMixin",
+    "VisualFrameUniformsMixin",
+    "BenchmarkTextureManagerAccessor",
+    "VisualAtlasMixin",
+    "VisualAnimationMixin",
+    "FrameUniformsMatricesAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

@@ -8,7 +8,10 @@ import com.mojang.renderpearl.api.commands.RenderPassDescriptor;
 import com.mojang.renderpearl.api.device.GpuDevice;
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import com.mojang.renderpearl.api.textures.GpuSampler;
+import com.mojang.renderpearl.api.textures.GpuTexture;
 import com.mojang.renderpearl.api.textures.GpuTextureView;
+import dev.kausik.metal.MetalPassHints;
+import dev.kausik.shaders.compile.MatrixUniformSpecialization;
 import dev.kausik.shaders.compile.MinecraftVertexAdapter;
 import dev.kausik.shaders.compile.UniformLayout;
 import dev.kausik.shaders.geometry.FeatureDrawContext;
@@ -19,34 +22,54 @@ import dev.kausik.shaders.pack.ShaderProperties;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import org.joml.Matrix4fc;
 import org.slf4j.LoggerFactory;
 
 /** Owns the pack graph for one game instance. All GPU methods run on the render thread. */
 public final class ShaderRuntime implements AutoCloseable {
+  private static final boolean DISCARD_FULLSCREEN_LOADS =
+      Boolean.getBoolean("minecraftShaders.discardFullscreenLoads");
+  private static final boolean SPARSE_PROJECTION =
+      Boolean.getBoolean("minecraftShaders.sparseProjectionMatrices");
   private static ShaderRuntime instance;
   private final ShaderPack pack;
   private final Map<String, String> options;
   private final ShaderProperties properties;
+  private final MaterialPalette materialPalette;
   private final FrameUniforms uniforms = new FrameUniforms();
+  private final ShaderFrameProfiler profiler = ShaderFrameProfiler.fromSystemProperties();
   private final Map<Variant, PackPipeline> geometry = new HashMap<>();
   private final Map<String, PackPipeline> screens = new HashMap<>();
+  private final Map<PackPipeline, PackPipeline> sparseScreens = new IdentityHashMap<>();
+  private long sparseProjectionPasses, sparseProjectionFallbacks;
+  private final Map<PackPipeline, FullscreenOverwrite.Result> screenOverwrites =
+      new IdentityHashMap<>();
   private final Map<UniformKey, GpuBufferSlice> frameBuffers = new HashMap<>();
   private PackPrograms programs;
   private PackRenderTargets targets;
   private PackTextures textures;
+  private MaterialAtlas materialAtlas;
+  private GpuTexture blockAtlas;
   private PackMipmaps mipmaps;
+  private UnusedMipmaps unusedMipmaps;
+  private long mipmapGenerations;
   private PackDepthMerge depthMerge;
   private String dimension;
   private ShaderRenderPass openPass;
   private boolean active, hand, shadow, raw, deferred;
 
-  public ShaderRuntime(ShaderPack pack, Map<String, String> options, ShaderProperties properties) {
+  public ShaderRuntime(ShaderPack pack, Map<String, String> options, ShaderProperties properties)
+      throws IOException {
     this.pack = pack;
     this.options = Map.copyOf(options);
     this.properties = properties;
+    String materialPath = properties.get("materialPalette", "");
+    materialPalette =
+        materialPath.isEmpty() ? null : MaterialPalette.parse(pack.text(materialPath));
   }
 
   public static void install(ShaderRuntime runtime) {
@@ -81,20 +104,50 @@ public final class ShaderRuntime implements AutoCloseable {
     return targets;
   }
 
+  public MaterialAtlas.Stats materialStats() {
+    return materialAtlas == null ? new MaterialAtlas.Stats(0, 0, 0, 0, 0) : materialAtlas.stats();
+  }
+
   public void beginFrame() {
+    ShadowRenderer.beginFrame();
     Minecraft minecraft = Minecraft.getInstance();
     if (minecraft.level == null) return;
+    // Refresh after resource reloads; a held block and terrain can share this same atlas.
+    blockAtlas =
+        minecraft
+            .getTextureManager()
+            .getTexture(TextureAtlas.LOCATION_BLOCKS)
+            .getTextureView()
+            .texture();
     var main = minecraft.gameRenderer.mainRenderTarget();
     String nextDimension = minecraft.level.dimension().identifier().toString();
     try {
       if (programs == null || !nextDimension.equals(dimension)) {
         disposeGraph();
-        programs = new PackPrograms(pack, options, nextDimension);
+        var shadowComparison = PackTextures.shadowComparison(device());
+        programs = new PackPrograms(pack, options, nextDimension, shadowComparison);
+        unusedMipmaps =
+            Boolean.getBoolean("minecraftShaders.skipUnusedMipmaps")
+                ? UnusedMipmaps.analyze(programs)
+                : null;
+        if (unusedMipmaps != null)
+          LoggerFactory.getLogger("minecraft_shader_loader")
+              .info("Proven unused mip generations: {}", unusedMipmaps.skipped());
         uniforms.setCustomUniforms(CustomUniforms.compile(programs.properties));
-        textures = new PackTextures(device(), pack, programs.properties);
+        textures = new PackTextures(device(), pack, programs.properties, shadowComparison);
         mipmaps = new PackMipmaps(device());
         depthMerge = new PackDepthMerge(device());
         dimension = nextDimension;
+      }
+      if (programs.readsSampler("materialtex")) {
+        if (materialAtlas == null) {
+          if (materialPalette == null)
+            throw new IOException("materialtex requires a materialPalette declaration");
+          materialAtlas = new MaterialAtlas(device(), materialPalette);
+        }
+        materialAtlas.refresh(
+            (TextureAtlas) minecraft.getTextureManager().getTexture(TextureAtlas.LOCATION_BLOCKS),
+            minecraft.getResourceManager());
       }
       if (targets == null || targets.width != main.width || targets.height != main.height) {
         // Pipeline state depends on attachment formats, not the size of their textures.
@@ -118,12 +171,14 @@ public final class ShaderRuntime implements AutoCloseable {
         if (programs.find("final") != null) screenPipeline(programs.find("final"));
         LoggerFactory.getLogger("minecraft_shader_loader")
             .info(
-                "Pack {} initialized in {} at {}x{}",
+                "Pack {} initialized in {} at {}x{}; shadow comparisons: {}",
                 pack.name(),
                 nextDimension,
                 main.width,
-                main.height);
+                main.height,
+                textures.hardwareShadowComparison() ? "hardware" : "emulated");
       }
+      if (profiler != null) profiler.beginFrame(device(), dimension, main.width, main.height);
       frameBuffers.clear();
       uniforms.beginFrame(minecraft, main.width, main.height, programs.globals);
       if (uniforms.historyReset())
@@ -139,6 +194,7 @@ public final class ShaderRuntime implements AutoCloseable {
               .cameraRenderState
               .fogData
               .color);
+      profile("targets.cleared");
       updateShadowMatrices();
       active = true;
       hand = false;
@@ -178,6 +234,7 @@ public final class ShaderRuntime implements AutoCloseable {
   public boolean beginShadow() {
     if (!active || programs.find("shadow") == null) return false;
     suspend();
+    profile("shadow.begin");
     shadow = true;
     frameBuffers.clear();
     return true;
@@ -185,6 +242,7 @@ public final class ShaderRuntime implements AutoCloseable {
 
   public void endShadow() {
     suspend();
+    profile("shadow.end");
     shadow = false;
     frameBuffers.clear();
     execute("prepare");
@@ -199,8 +257,13 @@ public final class ShaderRuntime implements AutoCloseable {
   public void beforeTranslucents() {
     if (!active || shadow || deferred) return;
     suspend();
-    targets.snapshotOpaqueDepth();
+    profile("world.opaque.end");
+    // depthtex1 also receives opaque hand rendering; it must start from scene depth.
+    targets.copyDepth(1);
+    if (programs.readsSampler("depthtex2")) targets.copyDepth(2);
+    profile("depth.snapshot.end");
     execute("deferred");
+    profile("deferred.end");
     deferred = true;
   }
 
@@ -208,22 +271,30 @@ public final class ShaderRuntime implements AutoCloseable {
     if (!active) return;
     beforeTranslucents();
     suspend();
+    profile("hand.begin");
     hand = true;
   }
 
   public void endFrame() {
+    ShadowRenderer.discardSelection();
     if (!active) return;
     try {
       suspend();
       beforeTranslucents();
-      if (hand) depthMerge.merge(targets);
+      if (hand) {
+        profile("hand.end");
+        if (programs.postReadsSampler("depthtex0")) depthMerge.merge(targets);
+        profile("depth.hand_merge.end");
+      }
       execute("composite");
       PackPrograms.Source finalProgram = programs.find("final");
       if (finalProgram == null)
         throw new UnsupportedOperationException("Pack requires a final output program");
       execute(screenPipeline(finalProgram));
       uniforms.endFrame();
+      if (profiler != null) profiler.endFrame();
     } finally {
+      if (profiler != null) profiler.abortFrame();
       active = false;
       hand = false;
       shadow = false;
@@ -232,7 +303,9 @@ public final class ShaderRuntime implements AutoCloseable {
   }
 
   public void abortFrame() {
+    ShadowRenderer.discardSelection();
     suspend();
+    if (profiler != null) profiler.abortFrame();
     active = false;
     hand = false;
     shadow = false;
@@ -286,6 +359,8 @@ public final class ShaderRuntime implements AutoCloseable {
                 programs.geometry(
                     source, MinecraftVertexAdapter.adapter(original, shadow, hand), alphaTest);
             if (waterMask) translated = MinecraftVertexAdapter.waterMaskProgram(translated);
+            translated =
+                dev.kausik.shaders.compile.MinecraftTextureAdapter.adapt(original, translated);
           } catch (IOException failure) {
             throw new UncheckedIOException("Invalid alpha test for " + source.name(), failure);
           } catch (RuntimeException failure) {
@@ -314,30 +389,126 @@ public final class ShaderRuntime implements AutoCloseable {
   private PackPipeline screenPipeline(PackPrograms.Source source) {
     return screens.computeIfAbsent(
         source.name(),
-        name ->
-            PackPipeline.compile(
-                device(),
-                source,
-                source.translated(),
-                null,
-                targets,
-                name.equals("final"),
-                false,
-                0,
-                0,
-                0));
+        name -> {
+          PackPipeline dense =
+              PackPipeline.compile(
+                  device(),
+                  source,
+                  source.translated(),
+                  null,
+                  targets,
+                  name.equals("final"),
+                  false,
+                  0,
+                  0,
+                  0);
+          if (SPARSE_PROJECTION) {
+            var candidate =
+                MatrixUniformSpecialization.apply(
+                    source.translated(), MatrixUniformSpecialization.PROJECTION_INVERSE);
+            if (candidate.applied()) {
+              try {
+                sparseScreens.put(
+                    dense,
+                    PackPipeline.compile(
+                        device(),
+                        source,
+                        candidate.program(),
+                        null,
+                        targets,
+                        name.equals("final"),
+                        false,
+                        0,
+                        0,
+                        0));
+              } catch (RuntimeException failure) {
+                LoggerFactory.getLogger("minecraft_shader_loader")
+                    .warn(
+                        "Sparse projection variant {} unavailable; retaining dense shader",
+                        name,
+                        failure);
+              }
+            }
+          }
+          return dense;
+        });
+  }
+
+  public long sparseProjectionPasses() {
+    return sparseProjectionPasses;
+  }
+
+  public long sparseProjectionFallbacks() {
+    return sparseProjectionFallbacks;
+  }
+
+  public long mipmapGenerations() {
+    return mipmapGenerations;
   }
 
   public void prepare(PackPipeline pipeline) {
     try {
-      for (int index : pipeline.source().directives().mipmapBuffers())
-        mipmaps.generate(targets.color(index));
+      var requested = pipeline.source().directives().mipmapBuffers();
+      boolean generated = false;
+      for (int index : requested) {
+        if (pipeline.fullscreen()
+            && unusedMipmaps != null
+            && unusedMipmaps.skips(pipeline.source().name(), index)) continue;
+        PackTexture texture = targets.color(index);
+        targets.ensureDefined(texture);
+        if (texture.texture.getMipLevels() <= 1) continue;
+        mipmaps.generate(texture);
+        mipmapGenerations++;
+        generated = true;
+      }
+      if (generated) profile("mipmaps." + pipeline.source().name() + ".end");
+    } catch (IOException failure) {
+      throw new UncheckedIOException(failure);
+    }
+  }
+
+  public boolean requiresReadPreparation(PackPipeline pipeline) {
+    for (var sampler : pipeline.samplerBindings()) {
+      if (textures.custom(pipeline.source().name(), sampler.name()) != null) continue;
+      boolean needed =
+          switch (sampler.kind()) {
+            case COLOR -> targets.needsColorDefinition(sampler.index());
+            case DEPTH -> targets.needsDepthDefinition(sampler.index());
+            case SHADOW_COLOR -> targets.needsShadowColorDefinition(sampler.index());
+            case SHADOW_DEPTH -> targets.needsShadowDepthDefinition(sampler.index());
+            default -> false;
+          };
+      if (needed) return true;
+    }
+    return false;
+  }
+
+  public boolean requiresMipGeneration(PackPipeline pipeline) {
+    try {
+      return !pipeline.source().directives().mipmapBuffers().isEmpty();
     } catch (IOException failure) {
       throw new UncheckedIOException(failure);
     }
   }
 
   public RenderPass open(PackPipeline pipeline) {
+    return open(pipeline, 0);
+  }
+
+  private RenderPass open(PackPipeline pipeline, int discardMask) {
+    // Reads must be defined before opening an encoder; a later binding cannot issue a clear.
+    for (var sampler : pipeline.samplerBindings()) {
+      if (textures.custom(pipeline.source().name(), sampler.name()) != null) continue;
+      PackTexture target =
+          switch (sampler.kind()) {
+            case COLOR -> targets.color(sampler.index());
+            case DEPTH -> targets.depth(sampler.index());
+            case SHADOW_COLOR -> targets.shadowColor(sampler.index());
+            case SHADOW_DEPTH -> targets.shadowDepth(sampler.index());
+            default -> null;
+          };
+      if (target != null) targets.ensureDefined(target);
+    }
     RenderPassDescriptor descriptor =
         pipeline.source().name().equals("final")
             ? RenderPassDescriptor.builder(() -> "Shader pack final")
@@ -349,18 +520,15 @@ public final class ShaderRuntime implements AutoCloseable {
                 pipeline.translated().drawBuffers(),
                 pipeline.fullscreen(),
                 pipeline.shadow(),
-                pipeline.depth());
-    if (pipeline.depth() && !pipeline.shadow() && pipeline.depthTarget() != 0) {
-      descriptor =
-          new RenderPassDescriptor(
-              descriptor.label(),
-              descriptor.colorAttachments(),
-              new RenderPassDescriptor.Attachment<>(
-                  targets.depth(pipeline.depthTarget()).level(0), java.util.OptionalDouble.empty()),
-              descriptor.renderArea());
-    }
+                pipeline.depth(),
+                pipeline.depthTarget());
     raw = true;
     try {
+      if (discardMask != 0) {
+        try (var ignored = MetalPassHints.openDiscardColors(descriptor, discardMask)) {
+          return device().createCommandEncoder().createRenderPass(descriptor);
+        }
+      }
       return device().createCommandEncoder().createRenderPass(descriptor);
     } finally {
       raw = false;
@@ -424,7 +592,8 @@ public final class ShaderRuntime implements AutoCloseable {
       String changed) {
     for (var sampler : pipeline.samplerBindings()) {
       boolean affected =
-          sampler.kind() == PackPipeline.SamplerKind.ALBEDO
+          (sampler.kind() == PackPipeline.SamplerKind.ALBEDO
+                      || sampler.kind() == PackPipeline.SamplerKind.MATERIAL)
                   && changed.equals(pipeline.primarySampler())
               || sampler.kind() == PackPipeline.SamplerKind.LIGHTMAP && changed.equals("Sampler2");
       if (affected && textures.custom(pipeline.source().name(), sampler.name()) == null)
@@ -458,6 +627,16 @@ public final class ShaderRuntime implements AutoCloseable {
         }
         case NORMAL -> texture = textures.normal;
         case SPECULAR -> texture = textures.black;
+        case MATERIAL -> {
+          if (materialAtlas == null) throw new IllegalStateException("Material atlas not prepared");
+          var original = supplied.get(pipeline.primarySampler());
+          texture =
+              materialAtlas.forAlbedo(
+                  original == null || original.texture() == null
+                      ? null
+                      : original.texture().texture());
+          filter = materialAtlas.sampler;
+        }
         case ALBEDO, LIGHTMAP -> {
           var original =
               supplied.get(
@@ -467,6 +646,8 @@ public final class ShaderRuntime implements AutoCloseable {
           if (original != null && original.texture() != null) {
             view = original.texture();
             filter = original.sampler();
+            if (sampler.kind() == PackPipeline.SamplerKind.ALBEDO)
+              filter = textures.albedoSampler(view, blockAtlas, filter);
           } else texture = textures.white;
         }
         case CUSTOM ->
@@ -475,6 +656,13 @@ public final class ShaderRuntime implements AutoCloseable {
       }
     }
     if (view == null) view = texture.sampled;
+    if (sampler.comparison()) {
+      if (textures.hardwareShadowComparison()
+          && view.texture().getFormat() != com.mojang.renderpearl.api.GpuFormat.D32_FLOAT)
+        throw new UnsupportedOperationException(
+            "Hardware shadow comparison requires a depth texture: " + sampler.name());
+      filter = textures.comparisonSampler();
+    }
     pass.setUniform(sampler.shaderName(), view, filter);
   }
 
@@ -483,14 +671,55 @@ public final class ShaderRuntime implements AutoCloseable {
   }
 
   private void execute(PackPipeline pipeline) {
+    PackPipeline sparse = sparseScreens.get(pipeline);
+    if (sparse != null) {
+      if (uniforms.matchesMatrix(MatrixUniformSpecialization.PROJECTION_INVERSE)) {
+        pipeline = sparse;
+        sparseProjectionPasses++;
+      } else sparseProjectionFallbacks++;
+    }
+    profile("pass." + pipeline.source().name() + ".begin");
     prepare(pipeline);
-    try (RenderPass pass = open(pipeline)) {
+    try (RenderPass pass = open(pipeline, fullscreenDiscardMask(pipeline))) {
       pass.setPipeline(pipeline.compiled());
       bind(pipeline, pass, Map.of());
       pass.draw(3, 1, 0, 0);
     }
     if (!pipeline.source().name().equals("final"))
       targets.flip(pipeline.translated().drawBuffers());
+    profile("pass." + pipeline.source().name() + ".end");
+  }
+
+  private int fullscreenDiscardMask(PackPipeline pipeline) {
+    if (!DISCARD_FULLSCREEN_LOADS
+        || !pipeline.fullscreen()
+        || pipeline.shadow()
+        || pipeline.depth()
+        || !device()
+            .getDeviceInfo()
+            .underlyingExtensions()
+            .contains(MetalPassHints.DISCARD_COLOR_CAPABILITY)) return 0;
+    // Only execute() calls this: PackPipeline.compile(original=null) owns triangles, no depth,
+    // blending or culling and WRITE_ALL; execute owns draw(3), full viewport and no scissor.
+    // Backend validation additionally checks mip/layer/area bounds and explicit clears.
+    return screenOverwrites
+        .computeIfAbsent(
+            pipeline,
+            candidate -> {
+              var result = FullscreenOverwrite.analyze(candidate.translated());
+              LoggerFactory.getLogger("minecraft_shader_loader")
+                  .info(
+                      "Fullscreen load discard {}: mask={}, {}",
+                      candidate.source().name(),
+                      result.colorMask(),
+                      result.reason());
+              return result;
+            })
+        .colorMask();
+  }
+
+  private void profile(String boundary) {
+    if (profiler != null) profiler.mark(boundary);
   }
 
   private void disposePipelines() {
@@ -498,10 +727,15 @@ public final class ShaderRuntime implements AutoCloseable {
     geometry.clear();
     screens.values().forEach(PackPipeline::close);
     screens.clear();
+    sparseScreens.values().forEach(PackPipeline::close);
+    sparseScreens.clear();
+    screenOverwrites.clear();
     frameBuffers.clear();
   }
 
   private void disposeGraph() {
+    ShadowRenderer.discardSelection();
+    unusedMipmaps = null;
     disposePipelines();
     if (targets != null) {
       targets.close();
@@ -527,10 +761,16 @@ public final class ShaderRuntime implements AutoCloseable {
 
   @Override
   public void close() {
+    ShadowRenderer.discardSelection();
     active = false;
     suspend();
     disposeGraph();
+    if (materialAtlas != null) {
+      materialAtlas.close();
+      materialAtlas = null;
+    }
     OriginalPipelines.clear();
+    if (profiler != null) profiler.close();
   }
 
   private record Variant(

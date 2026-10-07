@@ -1,0 +1,24 @@
+Release validation — October 7, 2026
+
+PASS ./gradlew --no-parallel build :shader-loader:solsticePack :shader-loader:canopyPack
+94 tasks; 74 executed, 20 up-to-date. Native Metal GPU, renderer shader,
+shader-loader, original pack, and scene-optimizer checks passed.
+
+PASS packaged Canopy 0.2.0 and Solstice 0.1.0 launches, all three production JARs,
+Fabric Loader only plus the test-only benchmark probe (Fabric API absent).
+Both rendered a disposable forest fixture with ordinary runtime defaults,
+2 seconds warmup and 3 seconds of sampling. No GPU command failures.
+These short checks are installation/correctness evidence, not FPS benchmarks.
+
+PASS release archive checks: three production JARs with matching mod metadata,
+native arm64 library with only system dependencies, two original shader ZIPs,
+licenses, configuration and documentation. Verified internal SHA-256 checksums.
+No BSL, third-party mods, Spark, game assets, accounts, worlds or test JARs bundled.
+
+Earlier material gameplay, reload, resource override, and dimension checks are
+recorded in ../canopy-0.2.0/validation.txt. Optional tuned performance settings
+are in ../../releases/performance-settings.md. Pack README text was updated for
+publication; shader source and rendering behavior are unchanged from that run.
+
+Full release build and launch logs remain local under /tmp/minecraft-metal-release-*.log
+and .research/release-0.2.2/.

@@ -1,20 +1,25 @@
 # Architecture
 
-## Two mods in one repository
+For the client scene optimization contract and implementation status, see
+[renderer, shader runtime and scene optimization boundaries](rendering-boundaries.md) and the
+[October 2026 source research](performance-source-review.md).
 
-The repository builds two separately installed Fabric mods. The existing root Gradle project is
-the Metal renderer; `shader-loader/` is a subproject with its own source, metadata, version, and JAR.
+## Three mods in one repository
+
+The repository builds three separately installed Fabric mods. The root Gradle project is
+the Metal backend; `shader-loader/` and `scene-optimizer/` each have their own source, metadata, version, and JAR.
 Shared Minecraft, Java, and packaging configuration lives in `gradle/minecraft-mod.gradle`.
 
 | Module | Mod ID | Responsibility |
 | --- | --- | --- |
 | Root (`:`) | `minecraft_metal` | Native Metal GPU execution and presentation |
 | `:shader-loader` | `minecraft_shader_loader` | Shader-pack loading and rendering orchestration |
+| `:scene-optimizer` | `minecraft_scene_optimizer` | Scene selection and retained draw metadata |
 
-The renderer has no dependency on the shader loader and remains usable alone. The initial loader
-declares the renderer as a required, separately installed dependency. Neither JAR includes the other.
-The renderer is version `0.2.1`; the loader starts at `0.1.0`, controlled independently by
-`shader_loader_version` in the root Gradle properties.
+The renderer has no dependency on either optional mod and remains usable alone. The loader and
+optimizer require the separately installed renderer, with no dependency on each other. No mod
+bundles another's classes. Working versions are renderer `0.2.2`, loader `0.1.3` and optimizer `0.1.0`,
+controlled independently in the root Gradle properties. These source versions are not a release claim.
 
 The loader reads a selected pack ZIP or directory, resolves its options and conditional programs,
 adapts legacy GLSL and Minecraft vertex streams, and schedules scene, shadow, deferred, composite,
@@ -32,11 +37,20 @@ requires it. Native handles and Metal
 commands stay inside the renderer. This preserves the possibility of supporting other backends
 later without claiming that the initial loader is backend-independent.
 
-Both mods share the game's process and active GPU device. Separating their artifacts does not
+All three mods share the game's process and active GPU device. Separating their artifacts does not
 require a second device, frame copies, or another graphics translation layer. Keep shader loading
-optional and test the renderer both alone and with the loader as functionality is added.
+and scene optimization optional; test all four combinations as functionality is added.
+
+The backend JAR hosts the small `dev.kausik.scene` contract exactly once. The loader requests
+independent ordered shadow selections through this contract. Without the optimizer, a vanilla
+adapter supplies them. The optimizer registers one alternative provider; world and material
+generations invalidate retained metadata. Pack policy remains in the loader, and GPU resource
+lifetime remains in the backend. The initial provider retains spatial groups and section layer
+sets; draw-descriptor retention is experimental and explicitly gated.
 
 ### Shader frame
+
+Packs can opt into a generated block material atlas using `materialPalette` and `materialtex`. The loader aligns authored presets/masks with the game atlas and handles reloads, while the backend remains material-agnostic. See [the material contract](materials.md).
 
 Terrain retains Minecraft's section meshing and indirect draw batches, with additional material,
 normal, tangent, and UV data in its vertex stream. Dynamic model adapters preserve the game's pose

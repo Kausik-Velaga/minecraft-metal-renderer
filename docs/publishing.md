@@ -1,5 +1,22 @@
 # Registry submission notes
 
+## October 7, 2026 suite release
+
+The GitHub `v0.2.2` prerelease distributes Minecraft Metal 0.2.2, Shader Loader
+0.1.3, Scene Optimizer 0.1.0, Canopy 0.2.0 and Solstice 0.1.0. Build with
+`./gradlew --no-parallel build :shader-loader:canopyPack :shader-loader:solsticePack`,
+then run `python3 tools/package-release.py`. Upload the seven allowlisted files
+from `build/distributions/v0.2.2/`: three production JARs, two original shader
+ZIPs, the complete suite ZIP and SHA256SUMS. Use [the release notes](releases/0.2.2.md).
+The suite selects Canopy through a supplied configuration; it does not change
+launcher arguments. BSL and third-party artifacts are excluded.
+
+The registry entries below record the earlier 0.2.0 submissions. Their status
+has not been rechecked and these listings have not been updated by the GitHub
+suite release. Do not present their older files as the current suite.
+
+## Historical 0.2.0 submissions
+
 Prepared October 2, 2026 for the experimental 0.2.0 release. These are maintainer notes, not the public mod description.
 
 ## Project name

@@ -16,7 +16,8 @@
     ]
   },
   "mixins": [
-    "minecraft-metal.mixins.json"
+    "minecraft-metal.mixins.json",
+    "minecraft-scene-api.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.19.3",

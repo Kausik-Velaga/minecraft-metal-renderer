@@ -1,0 +1,338 @@
+import groovy.json.JsonOutput
+import java.nio.file.Files
+import java.security.MessageDigest
+
+// A normal game loop for measurements, isolated from Fabric's client-test scheduler.
+sourceSets {
+    benchmark {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+    }
+}
+loom.mods {
+    minecraft_shader_benchmark { sourceSet sourceSets.benchmark }
+}
+tasks.register('benchmarkStatisticsTest', JavaExec) {
+    dependsOn tasks.named('benchmarkClasses')
+    classpath = sourceSets.benchmark.runtimeClasspath
+    mainClass = 'dev.kausik.shaders.benchmark.FrameStatisticsTest'
+}
+check { dependsOn 'benchmarkStatisticsTest' }
+def benchmarkScene = providers.gradleProperty('benchmarkScene').getOrElse('flat')
+if (!(benchmarkScene in ['flat', 'natural'])) {
+    throw new GradleException('benchmarkScene must be flat or natural')
+}
+def benchmarkStamp = new Date().format('yyyyMMdd-HHmmss-SSS')
+def benchmarkArguments = ["-DminecraftShaders.benchmark.scene=${benchmarkScene}"]
+// Optional external diagnostic tool. Never added to production jars or ordinary benchmarks.
+def sparkEnabled = providers.gradleProperty('sparkProfiler').getOrElse('false').toBoolean()
+def sparkVersion = '1.10.187'
+def sparkChecksum = 'c74bf5d5a16b2445ec6ea717eac756412b272a8015e91f91a7bf5a27e6f2f99c4a11878d434510f941f37b0344b3a7d1ba0dd6c34e80642762c48fb6e9a93894'
+def sparkJar = rootProject.file(".research/profilers/spark-${sparkVersion}-fabric.jar")
+configurations.create('sparkProfilerMods') { transitive = false }
+['fabric-api-base', 'fabric-command-api-v2', 'fabric-lifecycle-events-v1'].each { module ->
+    dependencies.add('sparkProfilerMods', fabricApi.module(module, fabric_api_version))
+}
+def fetchSpark = tasks.register('prepareSparkProfiler') {
+    group = 'verification'
+    description = 'Fetch the checksum-pinned external Spark profiler for optional packaged diagnostics.'
+    outputs.file(sparkJar)
+    // Recheck the checksum even when an existing download is reused.
+    outputs.upToDateWhen { false }
+    doLast {
+        if (!sparkJar.isFile()) {
+            sparkJar.parentFile.mkdirs()
+            def temporary = new File(sparkJar.parentFile, sparkJar.name + '.part')
+            try {
+                new URI('https://cdn.modrinth.com/data/l6YH9Als/versions/e3hsPc1o/spark-1.10.187-fabric.jar').toURL().withInputStream { input ->
+                    temporary.withOutputStream { it << input }
+                }
+                def hash = MessageDigest.getInstance('SHA-512').digest(temporary.bytes).encodeHex().toString()
+                if (hash != sparkChecksum) throw new GradleException('Spark download checksum mismatch')
+                Files.move(temporary.toPath(), sparkJar.toPath())
+            } finally { temporary.delete() }
+        }
+        if (MessageDigest.getInstance('SHA-512').digest(sparkJar.bytes).encodeHex().toString() != sparkChecksum)
+            throw new GradleException("Spark checksum mismatch: remove ${sparkJar} and retry")
+    }
+}
+if (sparkEnabled) {
+    benchmarkArguments.add('-DminecraftShaders.benchmark.spark=true')
+    // The integrated server must not start a competing sampler during client warmup.
+    benchmarkArguments.add('-Dspark.backgroundProfiler=false')
+}
+if (providers.gradleProperty('shaderHardwareShadowComparison').isPresent()) {
+    benchmarkArguments.add("-DminecraftShaders.hardwareShadowComparison=${providers.gradleProperty('shaderHardwareShadowComparison').get()}")
+}
+['width', 'height', 'viewDistance', 'simulationDistance', 'warmupSeconds', 'measureSeconds',
+ 'startupSeconds', 'screenshot', 'x', 'y', 'z', 'yaw', 'pitch', 'worldTime', 'action', 'forestDirection', 'validationOnly', 'visualCompare', 'borderless'].each { setting ->
+    def value = providers.gradleProperty("benchmark${setting.capitalize()}")
+    if (value.isPresent()) benchmarkArguments.add("-DminecraftShaders.benchmark.${setting}=${value.get()}")
+}
+['shaderNativeMipmaps': 'minecraftShaders.nativeMipmaps',
+ 'shaderEarlyAlphaDemote': 'minecraftShaders.earlyAlphaDemote',
+ 'shaderOptimizeFragmentSpirv': 'minecraftShaders.optimizeFragmentSpirv',
+ 'shaderLiftUniformInitializers': 'minecraftShaders.liftUniformInitializers',
+ 'shaderDiscardFullscreenLoads': 'minecraftShaders.discardFullscreenLoads',
+ 'shaderCompactTerrainVertices': 'minecraftShaders.compactTerrainVertices',
+ 'shaderOptimizeVertexSpirv': 'minecraftShaders.optimizeVertexSpirv',
+ 'shaderSparseProjectionMatrices': 'minecraftShaders.sparseProjectionMatrices',
+ 'shaderRelaxedFragmentMath': 'minecraftShaders.relaxedFragmentMath',
+ 'sceneDrawWorkCounters': 'minecraftScene.drawWorkCounters',
+ 'shaderTerrainFrameMatrices': 'minecraftShaders.terrainFrameMatrices',
+ 'shaderSkipUnusedMipmaps': 'minecraftShaders.skipUnusedMipmaps',
+ 'shaderLazyTargetClears': 'minecraftShaders.lazyTargetClears',
+ 'shaderShadowReceiverCulling': 'minecraftShaders.shadowReceiverCulling',
+ 'sceneDrawMetadataCache': 'minecraftScene.drawMetadataCache',
+ 'sceneAsyncIndex': 'minecraftScene.asyncIndex',
+ 'sceneAsyncSelection': 'minecraftScene.asyncSelection',
+ 'sceneDisableSparseExtraction': 'minecraftScene.disableSparseExtraction',
+ 'shaderTightShadowReceiverPadding': 'minecraftShaders.tightShadowReceiverPadding',
+ 'metalIndirectCommandBuffers': 'minecraftMetal.indirectCommandBuffers',
+ 'metalDumpShaders': 'minecraftMetal.dumpShaders',
+ 'metalIndirectCommandBufferThreshold': 'minecraftMetal.indirectCommandBufferThreshold'].each { propertyName, systemName ->
+    def value = providers.gradleProperty(propertyName)
+    if (value.isPresent()) benchmarkArguments.add("-D${systemName}=${value.get()}")
+}
+if (providers.gradleProperty('benchmarkOutput').isPresent()) {
+    benchmarkArguments.add("-DminecraftShaders.benchmark.output=${file(providers.gradleProperty('benchmarkOutput').get()).absolutePath}")
+}
+['enabled': 'shaderProfiler', 'sampleEvery': 'shaderProfilerSampleEvery', 'output': 'shaderProfilerOutput'].each { setting, propertyName ->
+    def value = providers.gradleProperty(propertyName)
+    if (value.isPresent()) {
+        def resolved = setting == 'output' ? file(value.get()).absolutePath : value.get()
+        benchmarkArguments.add("-DminecraftShaders.profiler.${setting}=${resolved}")
+    }
+}
+// Pin inputs before launching. Never infer a natural world from the latest test run.
+def validateLabel = { String label ->
+    if (!(label ==~ /[a-zA-Z0-9][a-zA-Z0-9._-]*/))
+        throw new GradleException('benchmarkLabel must start with a letter or digit and contain only letters, digits, dots, underscores or hyphens')
+}
+def disjointPaths = { File first, File second ->
+    def a = first.canonicalFile.toPath(), b = second.canonicalFile.toPath()
+    if (a.startsWith(b) || b.startsWith(a))
+        throw new GradleException('Benchmark fixture, destination and evidence directories must not overlap')
+}
+def sha256 = { File input ->
+    def digest = MessageDigest.getInstance('SHA-256')
+    input.withInputStream { stream ->
+        byte[] buffer = new byte[65536]
+        int count
+        while ((count = stream.read(buffer)) != -1) digest.update(buffer, 0, count)
+    }
+    digest.digest().encodeHex().toString()
+}
+def treeIdentity = { File directory, Collection<File> files ->
+    def entries = new TreeMap<String, String>()
+    files.each { entry ->
+        if (Files.isSymbolicLink(entry.toPath()))
+            throw new GradleException("Benchmark inputs must not contain symbolic links: ${entry}")
+        if (entry.isFile()) entries[directory.toPath().relativize(entry.toPath()).toString()] = sha256(entry)
+    }
+    def digest = MessageDigest.getInstance('SHA-256')
+    entries.each { name, hash -> digest.update("${name}\u0000${hash}\n".getBytes('UTF-8')) }
+    [sha256: digest.digest().encodeHex().toString(), files: entries]
+}
+def fixtureIdentity = { File directory ->
+    def paths
+    Files.walk(directory.toPath()).withCloseable { paths = it.toList() }
+    treeIdentity(directory, paths.findAll { !(it.fileName.toString() in ['session.lock', '.DS_Store']) }.collect { it.toFile() })
+}
+def benchmarkFixture = {
+    def requested = providers.gradleProperty('benchmarkFixture').orNull
+    if (requested == null && benchmarkScene == 'natural')
+        throw new GradleException('Natural benchmarks require -PbenchmarkFixture=/absolute/path/to/a/fixed/disposable/world; newest-world selection is intentionally disabled')
+    def fixture = requested != null ? file(requested) : layout.buildDirectory.dir('run/clientGameTest/saves/Shader pack disposable validation').get().asFile
+    if (!fixture.isDirectory() || !new File(fixture, 'level.dat').isFile())
+        throw new GradleException('benchmarkFixture must contain level.dat; create the flat fixture with :shader-loader:runClientGameTest or supply an explicit fixture')
+    fixture.canonicalFile
+}
+def benchmarkEvidence = { File folder ->
+    providers.gradleProperty('benchmarkOutput').isPresent()
+        ? file(providers.gradleProperty('benchmarkOutput').get()).canonicalFile
+        : new File(folder, 'benchmarks')
+}
+def requireUnusedEvidence = { File evidence, String label ->
+    // A shell may already be redirecting this launch's console output to <label>.log.
+    // Only files owned by the benchmark probe/launcher reserve its result identity.
+    if ((evidence.listFiles() ?: []).any {
+        (it.name.startsWith(label + '.') || it.name.startsWith(label + '-'))
+            && (it.name.endsWith('.json') || it.name.endsWith('.csv')
+                || it.name.endsWith('.png') || it.name.endsWith('.failed.txt')
+                || it.name.endsWith('.sparkprofile'))
+    })
+        throw new GradleException("Evidence already exists for ${label}; choose a new benchmarkLabel instead of overwriting results")
+}
+// Capture power context before launch, never during a timed frame or by changing host settings.
+def hostPowerContext = {
+    def result = [capturedUtc: java.time.Instant.now().toString(),
+        notes: 'Prelaunch read-only snapshot; not a continuous thermal or power trace.']
+    if (!new File('/usr/bin/pmset').isFile()) return result + [available: false]
+    ['batt', 'custom', 'therm'].each { query ->
+        try {
+            def process = new ProcessBuilder('/usr/bin/pmset', '-g', query).redirectErrorStream(true).start()
+            if (process.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                result[query] = [exitCode: process.exitValue(), output: process.inputStream.getText('UTF-8').trim()]
+            } else {
+                process.destroyForcibly()
+                result[query] = [error: 'read timed out']
+            }
+        } catch (IOException failure) {
+            result[query] = [error: failure.toString()]
+        }
+    }
+    result
+}
+def prepareBenchmark = { File folder, String label, boolean withPack, Collection<File> artifacts ->
+    if (withPack && (!providers.gradleProperty('shaderPack').isPresent() || !file(providers.gradleProperty('shaderPack').get()).isFile()))
+        throw new GradleException('Supply -PshaderPack=/absolute/path/to/pack.zip')
+    def fixture = benchmarkFixture()
+    def destination = new File(folder, 'saves/shader-benchmark-scene')
+    def evidence = benchmarkEvidence(folder)
+    disjointPaths(fixture, destination)
+    disjointPaths(fixture, evidence)
+    disjointPaths(destination, evidence)
+    requireUnusedEvidence(evidence, label)
+    def input = fixtureIdentity(fixture)
+    delete destination
+    copy { from fixture; into destination; exclude '**/session.lock', '**/.DS_Store' }
+    if (fixtureIdentity(destination) != input || fixtureIdentity(fixture) != input)
+        throw new GradleException('Fixture changed during copying; close its game instance and retry')
+    // Configure all benchmark graphics options explicitly; never inherit another run's settings.
+    new File(folder, 'options.txt').text = 'onboardAccessibility:false\ntutorialStep:none\n'
+    delete new File(folder, 'config/minecraft-shader-loader.properties')
+    def sources = rootProject.fileTree('.') {
+        include 'src/**', 'shader-loader/src/**', 'shader-loader/build.gradle',
+            'scene-optimizer/src/**', 'scene-optimizer/build.gradle',
+            'native/**', 'gradle/**', 'shaderpacks/**', 'tools/**', '*.gradle', 'gradle.properties', 'gradlew*'
+        exclude '**/.DS_Store', '**/build/**', '**/__pycache__/**'
+    }
+    def identity = [schemaVersion: 1, createdUtc: java.time.Instant.now().toString(), label: label,
+        fixture: [path: fixture.toString(), identity: input],
+        sources: treeIdentity(rootProject.projectDir, sources.files),
+        gitHead: providers.exec { commandLine 'git', 'rev-parse', 'HEAD'; ignoreExitValue = true }.standardOutput.asText.get().trim(),
+        artifacts: artifacts.collectEntries { [(it.name): sha256(it)] },
+        hostPowerContext: hostPowerContext(),
+        requestedJvmArguments: benchmarkArguments.collect { it.toString() }]
+    evidence.mkdirs()
+    new File(evidence, "${label}.inputs.json").text = JsonOutput.prettyPrint(JsonOutput.toJson(identity)) + '\n'
+    logger.lifecycle("Benchmark fixture: ${fixture}; SHA-256: ${input.sha256}; isolated copy: ${destination}; evidence: ${evidence}/${label}")
+}
+def requireBenchmarkResult = { File folder, String label ->
+    def evidence = benchmarkEvidence(folder)
+    if (!new File(evidence, "${label}.json").isFile() || new File(evidence, "${label}.failed.txt").isFile())
+        throw new GradleException("Benchmark ${label} did not finish; inspect its log and .failed.txt report")
+}
+
+// These checks protect the destructive copy boundary and the identity used in comparisons.
+tasks.register('benchmarkSetupTest') {
+    doLast {
+        def scratch = layout.buildDirectory.dir('tmp/benchmark-setup-test').get().asFile
+        delete scratch
+        scratch.mkdirs()
+        def rejects = { Closure action ->
+            boolean rejected = false
+            try { action() } catch (GradleException expected) { rejected = true }
+            assert rejected
+        }
+        ['.', '..', '../escape', '/absolute', 'has space'].each { label -> rejects { validateLabel(label) } }
+        validateLabel('fixed-route-1')
+        def fixture = new File(scratch, 'fixture')
+        fixture.mkdirs()
+        rejects { disjointPaths(fixture, fixture) }
+        rejects { disjointPaths(fixture, new File(fixture, 'child')) }
+        rejects { disjointPaths(new File(fixture, 'child'), fixture) }
+        disjointPaths(fixture, new File(scratch, 'elsewhere'))
+        new File(fixture, 'level.dat').text = 'world A'
+        def first = fixtureIdentity(fixture)
+        new File(fixture, 'session.lock').text = 'ignored lock'
+        assert fixtureIdentity(fixture) == first
+        new File(fixture, 'level.dat').text = 'world B'
+        assert fixtureIdentity(fixture).sha256 != first.sha256
+        def evidence = new File(scratch, 'evidence')
+        evidence.mkdirs()
+        new File(evidence, 'example.log').text = 'console output opens before Gradle launches'
+        requireUnusedEvidence(evidence, 'example')
+        new File(evidence, 'example.failed.json').text = '{}'
+        rejects { requireUnusedEvidence(evidence, 'example') }
+        new File(evidence, 'profile-only.sparkprofile').bytes = [1, 2, 3] as byte[]
+        rejects { requireUnusedEvidence(evidence, 'profile-only') }
+        delete scratch
+    }
+}
+check { dependsOn 'benchmarkSetupTest' }
+
+['Baseline': false, 'Bsl': true].each { suffix, withPack ->
+    def runName = "clientBenchmark${suffix}"
+    def defaultLabel = withPack ? 'bsl-default' : 'baseline'
+    defaultLabel += "-${benchmarkScene}-${benchmarkStamp}"
+    def label = providers.gradleProperty('benchmarkLabel').getOrElse(defaultLabel)
+    validateLabel(label)
+    loom.runs.create(runName) {
+        inherit loom.runs.client
+        name "Shader Performance: ${label}"
+        source sourceSets.benchmark
+        runDir "build/run/benchmark-${label}"
+        vmArg '-DminecraftShaders.benchmark=true'
+        vmArg "-DminecraftShaders.benchmark.label=${label}"
+        vmArg "-DminecraftShaders.benchmark.inputs=${new File(benchmarkEvidence(layout.buildDirectory.dir("run/benchmark-${label}").get().asFile), "${label}.inputs.json")}"
+        vmArg "-DminecraftShaders.benchmark.expectPack=${withPack}"
+        vmArg '-DminecraftShaders.benchmark.world=shader-benchmark-scene'
+        benchmarkArguments.each { vmArg it }
+        vmArg "-DminecraftShaders.pack=${withPack ? providers.gradleProperty('shaderPack').getOrElse('') : ''}"
+        programArgs '--quickPlaySingleplayer', 'shader-benchmark-scene'
+        environmentVariable 'MTL_DEBUG_LAYER', '0'
+    }
+    tasks.named("run${runName.capitalize()}") {
+        dependsOn tasks.named('benchmarkClasses')
+        def runFolder = layout.buildDirectory.dir("run/benchmark-${label}")
+        doFirst { prepareBenchmark(runFolder.get().asFile, label, withPack, []) }
+        doFirst {
+            if (sparkEnabled) throw new GradleException('Spark capture requires a runPackaged task')
+        }
+        doLast { requireBenchmarkResult(runFolder.get().asFile, label) }
+    }
+}
+
+// Launch the actual distribution jars with vanilla Minecraft and Fabric Loader. The small
+// benchmark probe controls an isolated fixture. Optional Spark adds only its required API modules.
+tasks.register('benchmarkJar', Jar) {
+    dependsOn tasks.named('benchmarkClasses')
+    archiveClassifier = 'benchmark-probe'
+    from sourceSets.benchmark.output
+}
+def productionRunTask = plugins.getPlugin('net.fabricmc.fabric-loom').class.classLoader
+    .loadClass('net.fabricmc.loom.task.prod.ClientProductionRunTask')
+['Renderer': [false, false], 'Bsl': [true, false],
+ 'OptimizedRenderer': [false, true], 'OptimizedBsl': [true, true]].each { suffix, combination ->
+    def withPack = combination[0], withOptimizer = combination[1]
+    tasks.register("runPackaged${suffix}", productionRunTask) {
+        def label = providers.gradleProperty('benchmarkLabel').getOrElse("packaged-${suffix.toLowerCase()}-${benchmarkStamp}")
+        validateLabel(label)
+        def folder = layout.buildDirectory.dir("run/packaged-benchmark-${label}")
+        runDir = folder
+        mods.setFrom(rootProject.tasks.named('jar'), tasks.named('benchmarkJar'))
+        if (withPack) mods.from tasks.named('jar')
+        if (withOptimizer) mods.from project(':scene-optimizer').tasks.named('jar')
+        if (sparkEnabled) {
+            dependsOn fetchSpark
+            mods.from sparkJar, configurations.sparkProfilerMods
+        }
+        jvmArgs.addAll('-Xmx4G', '--enable-native-access=ALL-UNNAMED', '-Dmetal.enabled=true',
+            '-DminecraftShaders.benchmark=true', '-DminecraftShaders.benchmark.production=true',
+            "-DminecraftShaders.benchmark.label=${label}",
+            "-DminecraftShaders.benchmark.inputs=${new File(benchmarkEvidence(folder.get().asFile), "${label}.inputs.json")}",
+            "-DminecraftShaders.benchmark.expectPack=${withPack}",
+            "-DminecraftShaders.benchmark.expectOptimizer=${withOptimizer}",
+            '-DminecraftShaders.benchmark.world=shader-benchmark-scene',
+            '-DminecraftShaders.benchmark.warmupSeconds=10',
+            '-DminecraftShaders.benchmark.measureSeconds=10',
+            "-DminecraftShaders.pack=${withPack ? providers.gradleProperty('shaderPack').getOrElse('') : ''}")
+        jvmArgs.addAll(benchmarkArguments)
+        programArgs.addAll('--username', 'ShaderValidation', '--accessToken', '0',
+            '--version', minecraft_version, '--quickPlaySingleplayer', 'shader-benchmark-scene')
+        doFirst { prepareBenchmark(folder.get().asFile, label, withPack, mods.files) }
+        doLast { requireBenchmarkResult(folder.get().asFile, label) }
+    }
+}

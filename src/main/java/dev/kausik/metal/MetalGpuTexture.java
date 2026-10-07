@@ -3,6 +3,7 @@ package dev.kausik.metal;
 import com.mojang.renderpearl.api.GpuFormat;
 
 public final class MetalGpuTexture extends com.mojang.renderpearl.backend.common.BaseGpuTexture {
+  private final MetalDevice device;
   private long handle;
 
   public MetalGpuTexture(
@@ -15,6 +16,7 @@ public final class MetalGpuTexture extends com.mojang.renderpearl.backend.common
       int layers,
       int mipLevels) {
     super(usage, label, format, width, height, layers, mipLevels);
+    this.device = device;
     handle =
         MetalNative.createTexture(
             device.handle(), format.name(), width, height, layers, mipLevels, usage, label);
@@ -24,6 +26,11 @@ public final class MetalGpuTexture extends com.mojang.renderpearl.backend.common
   public long handle() {
     if (isClosed()) throw new IllegalStateException("Texture is closed: " + getLabel());
     return handle;
+  }
+
+  /** Backend extension for generating a full mip chain without separate raster passes. */
+  public void generateMipmaps(int levels) {
+    MetalNative.generateMipmaps(device.handle(), handle(), levels);
   }
 
   @Override

@@ -1,0 +1,67 @@
+{
+  "label": "materials-mapped",
+  "device": "Apple M3 Pro",
+  "minecraftVersion": "26.3",
+  "packSha256": "aff285f2a8e890aeab23b1af8e4e1ad9a0cfcdb2e1ddc1af93db0e391d44b3ec",
+  "framebufferWidth": 3456,
+  "framebufferHeight": 2168,
+  "warmupSeconds": 5.0,
+  "requestedMeasurementSeconds": 10.0,
+  "offscreenPresentation": true,
+  "nativeExecutionDelta": {
+    "submittedBuffers": 1363,
+    "completedBuffers": 1362,
+    "timedBuffers": 1362,
+    "gpuSpanNanosSum": 13134320096,
+    "uploadRingAcquires": 1363,
+    "uploadRingAcquireNanos": 139171,
+    "drawableAcquires": 0,
+    "drawableAcquireNanos": 0,
+    "failedBuffers": 0,
+    "unavailableGpuTimes": 0,
+    "uploadRingBlockedAcquires": 0,
+    "drawableTimeouts": 0
+  },
+  "materialAtlasAtStart": {
+    "generations": 1,
+    "skippedMasks": 0,
+    "mappedSprites": 50,
+    "bytes": 22347776,
+    "resourceOverrides": 0
+  },
+  "materialAtlasAtEnd": {
+    "generations": 1,
+    "skippedMasks": 0,
+    "mappedSprites": 50,
+    "bytes": 22347776,
+    "resourceOverrides": 0
+  },
+  "gcCollectionMillis": 13,
+  "diagnosticFrameIntervals": {
+    "frames": 1363,
+    "seconds": 10.000860833,
+    "meanFps": 136.28826785615166,
+    "meanMs": 7.337388725605282,
+    "p50Ms": 7.073875,
+    "p95Ms": 9.12775,
+    "p99Ms": 10.462833,
+    "maxMs": 23.868667
+  },
+  "rawEvidence": ".research/canopy-materials/materials-mapped.{json,csv,inputs.json,log,png}",
+  "powerAtLaunch": {
+    "capturedUtc": "2026-10-07T06:43:23.216395Z",
+    "notes": "Prelaunch read-only snapshot; not a continuous thermal or power trace.",
+    "batt": {
+      "exitCode": 0,
+      "output": "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=22872163)\t88%; discharging; 4:03 remaining present: true"
+    },
+    "custom": {
+      "exitCode": 0,
+      "output": "Battery Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         2\n womp                 0\n networkoversleep     0\n sleep                1\n lessbright           1\n tcpkeepalive         1\n disksleep            10\nAC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         10\n womp                 1\n networkoversleep     0\n sleep                1\n tcpkeepalive         1\n disksleep            10"
+    },
+    "therm": {
+      "exitCode": 0,
+      "output": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+    }
+  }
+}

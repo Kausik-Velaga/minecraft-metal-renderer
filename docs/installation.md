@@ -1,14 +1,20 @@
 # Install Minecraft Metal
 
-This guide installs the experimental **0.2.1** release for **Minecraft Java 26.3** on an **Apple Silicon Mac**. It requires Fabric Loader 0.19.3 or newer (0.19.5 tested), macOS 14 or newer (26.5.2 tested), and ARM64 Java 25 or newer. Intel Macs, Windows, and Linux are unsupported.
+This guide installs the experimental **0.2.2** release for **Minecraft Java 26.3** on an **Apple Silicon Mac**. It requires Fabric Loader 0.19.3 or newer (0.19.5 tested), macOS 14 or newer (26.5.2 tested), and ARM64 Java 25 or newer. Intel Macs, Windows, and Linux are unsupported.
 
 **You do not need Fabric API or developer tools to run the mod.** Its native Metal library is included. The official launcher's bundled ARM64 Java 25.0.1 was used for the clean-install test.
+
+## Complete suite
+
+The [suite ZIP](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/download/v0.2.2/minecraft-metal-suite-0.2.2.zip) contains all three mods and Canopy/Solstice. Extract it once, copy its three intact JARs into `mods`, and its shader ZIPs into `shaderpacks`. Copy the supplied `config` file only into a fresh profile; for updates, set `pack=Canopy-0.2.0.zip` and `profile=BALANCED` in the existing shader-loader configuration and remove incompatible old `option.*` entries. Remove older copies of these mods before updating. Follow the bundled `INSTALL.txt`.
+
+The steps below also support installing the renderer alone. For the companion mods and switching packs, see [shader setup](shader-loader.md). The suite does not change launcher JVM arguments; [optional performance settings](releases/performance-settings.md) reproduce the tuned benchmark configuration.
 
 ## Official Minecraft Launcher
 
 1. **Install Fabric for Minecraft 26.3.** Follow [Fabric's macOS installer guide](https://docs.fabricmc.net/players/installing-fabric/macos), selecting Minecraft **26.3** and Fabric Loader **0.19.5**. The installer creates a Fabric launcher profile. Running the Fabric installer itself may require a separately installed Java runtime; follow Fabric's guide if the installer will not open.
 2. **Give the profile a separate game directory.** Open the launcher's **Installations** tab, edit the Fabric profile, and set **Game Directory** to a new folder such as a `Minecraft Metal Test` folder in your home directory. Save the profile. This keeps the initial test separate from existing worlds and mods.
-3. **Add the mod.** Download [minecraft-metal-renderer-0.2.1.jar](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/download/v0.2.1/minecraft-metal-renderer-0.2.1.jar). In Finder, open the game directory you selected and create a folder named **`mods`** if it does not exist. Move the JAR into it. Do not double-click, unpack, or rename the JAR. Do not use GitHub's **Source code** ZIP or TAR downloads.
+3. **Add the mod.** Download [minecraft-metal-renderer-0.2.2.jar](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/download/v0.2.2/minecraft-metal-renderer-0.2.2.jar). In Finder, open the game directory you selected and create a folder named **`mods`** if it does not exist. Move the JAR into it. Do not double-click, unpack, or rename the JAR. Do not use GitHub's **Source code** ZIP or TAR downloads.
 4. **Play.** Select that Fabric profile and launch Minecraft. Metal activates automatically. Start with a new test world and no other mods or resource packs.
 
 The `mods` folder belongs inside the selected **game directory**, not inside the launcher application or the game's `versions` folder. For profiles using the default game directory, Finder's **Go → Go to Folder** can open `~/Library/Application Support/minecraft`; the folder for mods is inside it. A separate profile with no custom game directory may still share that default folder, so check the setting before adding the JAR.

@@ -2,10 +2,12 @@ package dev.kausik.shaders.mixin;
 
 import dev.kausik.shaders.geometry.FeatureDrawContext;
 import dev.kausik.shaders.runtime.ShadowRenderer;
+import dev.kausik.scene.SceneExtractionRequest;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.SectionUpdateTracker;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import net.minecraft.client.renderer.culling.Frustum;
@@ -13,6 +15,7 @@ import net.minecraft.client.renderer.extract.LevelExtractor;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
@@ -24,6 +27,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(LevelExtractor.class)
 public abstract class LevelExtractorShaderMixin {
+  @Shadow private SectionUpdateTracker sectionUpdateTracker;
+
   @Inject(method = "extract", at = @At("HEAD"))
   private void shaders$beginExtraction(CallbackInfo callback) {
     FeatureDrawContext.beginExtraction();
@@ -52,7 +57,7 @@ public abstract class LevelExtractorShaderMixin {
   }
 
   @Redirect(
-      method = {"extract", "extractVisibleBlockEntities"},
+      method = "extract",
       at =
           @At(
               value = "INVOKE",
@@ -60,7 +65,21 @@ public abstract class LevelExtractorShaderMixin {
                   "Lnet/minecraft/client/renderer/LevelRenderer;visibleSections()Lit/unimi/dsi/fastutil/objects/ObjectArrayList;"))
   private ObjectArrayList<SectionRenderDispatcher.RenderSection> shaders$shadowSections(
       LevelRenderer renderer) {
-    return ShadowRenderer.extractionSections(renderer);
+    return ShadowRenderer.extractionSections(
+        renderer, SceneExtractionRequest.Purpose.DIRTY_SECTIONS, sectionUpdateTracker);
+  }
+
+  @Redirect(
+      method = "extractVisibleBlockEntities",
+      at =
+          @At(
+              value = "INVOKE",
+              target =
+                  "Lnet/minecraft/client/renderer/LevelRenderer;visibleSections()Lit/unimi/dsi/fastutil/objects/ObjectArrayList;"))
+  private ObjectArrayList<SectionRenderDispatcher.RenderSection> shaders$shadowBlockEntitySections(
+      LevelRenderer renderer) {
+    return ShadowRenderer.extractionSections(
+        renderer, SceneExtractionRequest.Purpose.BLOCK_ENTITIES, null);
   }
 
   @ModifyVariable(method = "extractVisibleEntities", at = @At("HEAD"), argsOnly = true)

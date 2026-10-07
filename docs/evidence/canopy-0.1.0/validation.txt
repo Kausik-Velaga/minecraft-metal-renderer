@@ -1,0 +1,19 @@
+Canopy 0.1.0 validation — 2026-10-06
+
+Final pack SHA-256: 205b24849bf057a19d5e6b117c6d38e4738758f0af05113c37a36db38f7793da
+
+PASS CanopyPackTest: opaque snapshot isolation, HDR, dimension routing, enabled/disabled reflection loops, smoothed biome uniforms.
+PASS CanopyShaderSmokeTest: 493 native Metal pipeline variants, optimized fragment and vertex stages, hardware shadow comparison, Metal validation enabled.
+PASS SolsticePackTest; existing Solstice archive hash unchanged: 9b08eba16b163d2d9e46177658b3ad4f155e983ba28322530a6c9612ddd48c3a.
+PASS runClientGameTest: water, day/night/rain, resize, reload, underwater, particles, block entities, leaf breaking, walking, world text, held glint and fire.
+PASS runClientNaturalGameTest: natural terrain, flight, night, Nether, End, Overworld return.
+The gameplay run preceded the ripple-filter and cloud-fog fixes; natural validation included ripple filtering. Final compilation and both visible benchmarks include all fixes.
+PASS visible forest walking: six route legs, 151.9 blocks, zero failed GPU buffers.
+PASS visible shoreline: zero failed GPU buffers.
+Visual review is manual, not a pixel-perfect comparison against Vibrant Visuals.
+
+Limit: an unresolved 781.96 ms forest hitch is retained in the reported statistics.
+
+Full logs: .research/vibrant-visuals/gameplay.log, validation.log, release-check.log
+Full images: .research/vibrant-visuals/gameplay/, natural/, benchmarks/
+PASS final upward-looking native-resolution visual check: geometric clouds, lit edges, square sun and restrained halo reviewed. Screenshot: .research/vibrant-visuals/benchmarks/canopy-sky-visual.png. This two-second capture is not a performance result.

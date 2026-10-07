@@ -1,10 +1,27 @@
 #include "MetalContext.hpp"
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 
 using namespace metal;
 #define NATIVE(name) Java_dev_kausik_metal_MetalNative_##name
+static jlong createSamplerState(jlong device, bool repeatU, bool repeatV, bool linearMin, bool linearMag, jint anisotropy, jdouble maxLod, bool comparison) {
+    MTLSamplerDescriptor* desc = [MTLSamplerDescriptor new];
+    desc.supportArgumentBuffers = YES;
+    desc.sAddressMode = repeatU ? MTLSamplerAddressModeRepeat : MTLSamplerAddressModeClampToEdge;
+    desc.tAddressMode = repeatV ? MTLSamplerAddressModeRepeat : MTLSamplerAddressModeClampToEdge;
+    desc.rAddressMode = MTLSamplerAddressModeClampToEdge;
+    desc.minFilter = linearMin ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
+    desc.magFilter = linearMag ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
+    desc.mipFilter = linearMin ? MTLSamplerMipFilterLinear : MTLSamplerMipFilterNearest;
+    desc.compareFunction = comparison ? MTLCompareFunctionLessEqual : MTLCompareFunctionNever;
+    desc.maxAnisotropy = std::clamp<int>(anisotropy, 1, 16);
+    desc.lodMaxClamp = std::isfinite(maxLod) ? std::max(0.0, maxLod) : FLT_MAX;
+    auto sampler = [get<Device>(device).object newSamplerStateWithDescriptor:desc];
+    if (!sampler) throw std::runtime_error("Could not create Metal sampler");
+    return retainResource(std::make_unique<Sampler>(sampler));
+}
 extern "C" {
 JNIEXPORT jint JNICALL NATIVE(liveResourceCount)(JNIEnv* env, jclass) { return guarded(env, [&]() -> jint { return static_cast<jint>(metal::liveResourceCount()); }); }
 JNIEXPORT jlong JNICALL NATIVE(createDevice)(JNIEnv* env, jclass) {
@@ -27,6 +44,7 @@ JNIEXPORT jlong JNICALL NATIVE(createBuffer)(JNIEnv* env, jclass, jlong device, 
         NSUInteger allocation = (std::max<jlong>(size, 1) + 15) & ~NSUInteger(15);
         id<MTLBuffer> buffer = [d.object newBufferWithLength:allocation options:shared ? MTLResourceStorageModeShared : MTLResourceStorageModePrivate];
         if (!buffer) throw std::runtime_error("Could not allocate Metal buffer");
+        d.requireTracked(buffer);
         buffer.label = nsString(env, label);
         if (shared) memset(buffer.contents, 0, allocation);
         else if (allocation > static_cast<NSUInteger>(size) && !d.renderEncoder)
@@ -36,10 +54,51 @@ JNIEXPORT jlong JNICALL NATIVE(createBuffer)(JNIEnv* env, jclass, jlong device, 
 }
 JNIEXPORT jobject JNICALL NATIVE(mapBuffer)(JNIEnv* env, jclass, jlong buffer, jlong offset, jlong length) {
     return guarded(env, [&]() -> jobject {
-        auto b = get<Buffer>(buffer).object;
+        auto& resource = get<Buffer>(buffer);
+        auto b = resource.object;
         validateRange(b.length, offset, length);
         if (b.storageMode != MTLStorageModeShared) throw std::invalid_argument("Cannot map a private Metal buffer");
+        // External pointers have no publication/lifetime callback. Never trust an old snapshot
+        // after one has escaped, even if this particular caller only intended to read it.
+        resource.invalidateCpuIndirect(true);
         return env->NewDirectByteBuffer(static_cast<uint8_t*>(b.contents) + offset, length);
+    });
+}
+JNIEXPORT jboolean JNICALL NATIVE(enableCpuIndirectSnapshots)(JNIEnv* env, jclass, jlong device, jlong buffer) {
+    return guarded(env, [&]() -> jboolean {
+        auto& b = get<Buffer>(buffer);
+        auto& d = get<Device>(device);
+        b.cpuIndirectTracking = (d.indirectReuseEnabled || d.cpuIndirectEnabled) &&
+            b.object.storageMode == MTLStorageModeShared && !b.cpuIndirectPoisoned;
+        return b.cpuIndirectTracking;
+    });
+}
+JNIEXPORT jobject JNICALL NATIVE(mapCpuIndirectBuffer)(JNIEnv* env, jclass, jlong buffer, jlong offset, jlong length) {
+    return guarded(env, [&]() -> jobject {
+        auto& b = get<Buffer>(buffer);
+        validateRange(b.object.length, offset, length);
+        if (!b.cpuIndirectTracking) throw std::logic_error("Buffer does not support CPU indirect publication");
+        // Mapping grants write access only to this slice. Every overlapping snapshot loses
+        // authority immediately, while independently published append ranges remain unchanged.
+        b.invalidateCpuIndirectRange(offset, length);
+        ++b.cpuIndirectMappings;
+        return env->NewDirectByteBuffer(static_cast<uint8_t*>(b.object.contents) + offset, length);
+    });
+}
+JNIEXPORT void JNICALL NATIVE(publishCpuIndirectBuffer)(JNIEnv* env, jclass, jlong device, jlong buffer, jlong offset, jlong length) {
+    guarded(env, [&] {
+        auto& b = get<Buffer>(buffer);
+        validateRange(b.object.length, offset, length);
+        if (!b.cpuIndirectTracking || !b.cpuIndirectMappings) throw std::logic_error("No CPU indirect mapping to publish");
+        --b.cpuIndirectMappings;
+        // Publish only after every mapped view is closed. Earlier closes in a nested mapping
+        // scope stay unpublished. GPU destinations/exposed aliases still poison the whole buffer.
+        if (b.cpuIndirectPoisoned || b.cpuIndirectMappings || length <= 0 || length > Buffer::MaxPublishedBytes) return;
+        auto bytes = static_cast<const uint8_t*>(b.object.contents) + offset;
+        auto& d = get<Device>(device);
+        d.indirectSnapshotEvicted += b.publishCpuIndirect(offset, bytes, length);
+        ++d.indirectSnapshotPublished;
+        d.indirectPublishedBytes += length;
     });
 }
 JNIEXPORT void JNICALL NATIVE(writeBuffer)(JNIEnv* env, jclass, jlong device, jlong buffer, jlong offset, jobject data, jint position, jint length) {
@@ -47,6 +106,7 @@ JNIEXPORT void JNICALL NATIVE(writeBuffer)(JNIEnv* env, jclass, jlong device, jl
         auto& d = get<Device>(device); auto target = get<Buffer>(buffer).object;
         validateRange(target.length, offset, length);
         if (!length) return;
+        get<Buffer>(buffer).invalidateCpuIndirect(true);
         auto source = d.upload(directBytes(env, data, position, length), length);
         [d.blit() copyFromBuffer:source.buffer sourceOffset:source.offset toBuffer:target destinationOffset:offset size:length];
     });
@@ -55,7 +115,10 @@ JNIEXPORT void JNICALL NATIVE(copyBuffer)(JNIEnv* env, jclass, jlong device, jlo
     guarded(env, [&] {
         auto& d = get<Device>(device); auto src = get<Buffer>(source).object; auto dst = get<Buffer>(target).object;
         validateRange(src.length, sourceOffset, length); validateRange(dst.length, targetOffset, length);
-        if (length) [d.blit() copyFromBuffer:src sourceOffset:sourceOffset toBuffer:dst destinationOffset:targetOffset size:length];
+        if (length) {
+            get<Buffer>(target).invalidateCpuIndirect(true);
+            [d.blit() copyFromBuffer:src sourceOffset:sourceOffset toBuffer:dst destinationOffset:targetOffset size:length];
+        }
     });
 }
 JNIEXPORT jlong JNICALL NATIVE(createTexture)(JNIEnv* env, jclass, jlong device, jstring format, jint width, jint height, jint layers, jint mips, jint usage, jstring label) {
@@ -74,11 +137,19 @@ JNIEXPORT jlong JNICALL NATIVE(createTexture)(JNIEnv* env, jclass, jlong device,
             desc.arrayLength = layers;
         }
         desc.storageMode = MTLStorageModePrivate;
-        desc.usage = MTLTextureUsagePixelFormatView;
+        // Every view we expose preserves the component layout. Requesting reinterpretation
+        // unnecessarily disables Apple's lossless texture compression. Keep a control switch
+        // for equal-quality benchmark comparisons; actual texture usage remains explicit.
+        static const bool formatViews = [] {
+            const char* value = std::getenv("MINECRAFT_METAL_TEXTURE_FORMAT_VIEWS");
+            return value && std::strcmp(value, "1") == 0;
+        }();
+        desc.usage = formatViews ? MTLTextureUsagePixelFormatView : MTLTextureUsageUnknown;
         if (usage & 4) desc.usage |= MTLTextureUsageShaderRead;
         if (usage & 8) desc.usage |= MTLTextureUsageRenderTarget;
         id<MTLTexture> texture = [d.object newTextureWithDescriptor:desc];
         if (!texture) throw std::runtime_error("Could not allocate Metal texture");
+        d.requireTracked(texture);
         texture.label = nsString(env, label);
         return retainResource(std::make_unique<Texture>(texture));
     });
@@ -90,24 +161,33 @@ JNIEXPORT jlong JNICALL NATIVE(createTextureView)(JNIEnv* env, jclass, jlong tex
         NSUInteger slices = t.arrayLength * ((t.textureType == MTLTextureTypeCube || t.textureType == MTLTextureTypeCubeArray) ? 6 : 1);
         id<MTLTexture> view = [t newTextureViewWithPixelFormat:t.pixelFormat textureType:t.textureType levels:NSMakeRange(baseMip, mipCount) slices:NSMakeRange(0, slices)];
         if (!view) throw std::runtime_error("Could not create Metal texture view");
+        // Views share their parent's tracked backing allocation.
+        if (view.hazardTrackingMode != t.hazardTrackingMode)
+            throw std::logic_error("Metal texture view changed hazard tracking mode");
         return retainResource(std::make_unique<Texture>(view));
     });
 }
-JNIEXPORT jlong JNICALL NATIVE(createSampler)(JNIEnv* env, jclass, jlong device, jboolean repeatU, jboolean repeatV, jboolean linearMin, jboolean linearMag, jint anisotropy, jdouble maxLod) {
-    return guarded(env, [&]() -> jlong {
-        MTLSamplerDescriptor* desc = [MTLSamplerDescriptor new];
-        desc.sAddressMode = repeatU ? MTLSamplerAddressModeRepeat : MTLSamplerAddressModeClampToEdge;
-        desc.tAddressMode = repeatV ? MTLSamplerAddressModeRepeat : MTLSamplerAddressModeClampToEdge;
-        desc.rAddressMode = MTLSamplerAddressModeClampToEdge;
-        desc.minFilter = linearMin ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
-        desc.magFilter = linearMag ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
-        desc.mipFilter = linearMin ? MTLSamplerMipFilterLinear : MTLSamplerMipFilterNearest;
-        desc.maxAnisotropy = std::clamp<int>(anisotropy, 1, 16);
-        desc.lodMaxClamp = std::isfinite(maxLod) ? std::max(0.0, maxLod) : FLT_MAX;
-        auto sampler = [get<Device>(device).object newSamplerStateWithDescriptor:desc];
-        if (!sampler) throw std::runtime_error("Could not create Metal sampler");
-        return retainResource(std::make_unique<Sampler>(sampler));
+JNIEXPORT void JNICALL NATIVE(generateMipmaps)(JNIEnv* env, jclass, jlong device, jlong texture, jint levels) {
+    guarded(env, [&] {
+        auto& d = get<Device>(device);
+        auto target = get<Texture>(texture).object;
+        if (levels < 1 || static_cast<NSUInteger>(levels) > target.mipmapLevelCount)
+            throw std::invalid_argument("Invalid native mip generation level count");
+        if (levels <= 1) return;
+        if (static_cast<NSUInteger>(levels) < target.mipmapLevelCount) {
+            NSUInteger slices = target.arrayLength * ((target.textureType == MTLTextureTypeCube || target.textureType == MTLTextureTypeCubeArray) ? 6 : 1);
+            target = [target newTextureViewWithPixelFormat:target.pixelFormat textureType:target.textureType levels:NSMakeRange(0, levels) slices:NSMakeRange(0, slices)];
+            if (!target) throw std::runtime_error("Could not create native mip generation view");
+        }
+        d.requireTracked(target);
+        [d.blit() generateMipmapsForTexture:target];
     });
+}
+JNIEXPORT jlong JNICALL NATIVE(createSampler)(JNIEnv* env, jclass, jlong device, jboolean repeatU, jboolean repeatV, jboolean linearMin, jboolean linearMag, jint anisotropy, jdouble maxLod) {
+    return guarded(env, [&]() -> jlong { return createSamplerState(device, repeatU, repeatV, linearMin, linearMag, anisotropy, maxLod, false); });
+}
+JNIEXPORT jlong JNICALL NATIVE(createComparisonSampler)(JNIEnv* env, jclass, jlong device, jboolean repeatU, jboolean repeatV, jboolean linearMin, jboolean linearMag, jint anisotropy, jdouble maxLod) {
+    return guarded(env, [&]() -> jlong { return createSamplerState(device, repeatU, repeatV, linearMin, linearMag, anisotropy, maxLod, true); });
 }
 JNIEXPORT void JNICALL NATIVE(uploadTexture)(JNIEnv* env, jclass, jlong device, jlong texture, jobject data, jint position, jint mip, jint layer, jint x, jint y, jint width, jint height) {
     guarded(env, [&] {
@@ -140,6 +220,7 @@ JNIEXPORT void JNICALL NATIVE(textureToBuffer)(JNIEnv* env, jclass, jlong device
         if (width <= 0 || height <= 0) return;
         NSUInteger rowBytes = width * bytesPerPixel(source.pixelFormat);
         validateRange(target.length, offset, rowBytes * height);
+        get<Buffer>(buffer).invalidateCpuIndirect(true);
         [d.blit() copyFromTexture:source sourceSlice:0 sourceLevel:mip sourceOrigin:MTLOriginMake(x,y,0) sourceSize:MTLSizeMake(width,height,1)
             toBuffer:target destinationOffset:offset destinationBytesPerRow:rowBytes destinationBytesPerImage:rowBytes*height];
     });

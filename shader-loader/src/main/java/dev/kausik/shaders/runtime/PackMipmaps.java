@@ -20,7 +20,7 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 import net.minecraft.resources.Identifier;
 
-/** Render-based mip generation without CPU readback or backend-specific GPU commands. */
+/** Mip generation on the GPU, retaining raster filtering for irregular-size reductions. */
 public final class PackMipmaps implements AutoCloseable {
   private static final String VERTEX =
       """
@@ -40,12 +40,18 @@ public final class PackMipmaps implements AutoCloseable {
       void main() { color = textureLod(Source, uv, 0.0); }
       """;
   private final GpuDevice device;
+  private final boolean nativeGeneration;
   private final Map<GpuFormat, CompiledRenderPipeline> pipelines = new EnumMap<>(GpuFormat.class);
   private final GpuSampler sampler;
   private boolean closed;
 
   public PackMipmaps(GpuDevice device) {
+    this(device, Boolean.getBoolean("minecraftShaders.nativeMipmaps"));
+  }
+
+  public PackMipmaps(GpuDevice device, boolean nativeGeneration) {
     this.device = device;
+    this.nativeGeneration = nativeGeneration;
     sampler =
         device.createSampler(
             AddressMode.CLAMP_TO_EDGE,
@@ -116,23 +122,46 @@ public final class PackMipmaps implements AutoCloseable {
   public void generate(PackTexture texture) {
     if (closed) throw new IllegalStateException("Pack mipmap generator is closed");
     if (texture.texture.getMipLevels() <= 1) return;
+    int firstRasterLevel = 1;
+    if (nativeGeneration
+        && nativeFormat(texture.texture.getFormat())
+        && texture.texture instanceof dev.kausik.metal.MetalGpuTexture metal) {
+      int width = texture.texture.getWidth(0), height = texture.texture.getHeight(0);
+      // Metal's NPOT kernel has different interpolation precision. Only batch exact 2:1
+      // reductions; resume the established raster filter at the first irregular dimension.
+      while (firstRasterLevel < texture.texture.getMipLevels()
+          && (width == 1 || (width & 1) == 0)
+          && (height == 1 || (height & 1) == 0)) {
+        firstRasterLevel++;
+        width = Math.max(1, width / 2);
+        height = Math.max(1, height / 2);
+      }
+      if (firstRasterLevel > 1) metal.generateMipmaps(firstRasterLevel);
+      if (firstRasterLevel == texture.texture.getMipLevels()) return;
+    }
     CompiledRenderPipeline pipeline = pipelines.get(texture.texture.getFormat());
     if (pipeline == null)
       throw new UnsupportedOperationException("Mipmap format " + texture.texture.getFormat());
     var encoder = device.createCommandEncoder();
-    for (int level = 1; level < texture.texture.getMipLevels(); level++) {
+    for (int level = firstRasterLevel; level < texture.texture.getMipLevels(); level++) {
       int destination = level;
       // Views restrict reads and writes to distinct levels of the same allocation.
       try (var pass =
           encoder.createRenderPass(
               () -> "Shader-pack mip " + destination,
               texture.level(destination),
-              Optional.empty())) {
+              Optional.of(new org.joml.Vector4f()))) {
         pass.setPipeline(pipeline);
         pass.setUniform("Source", texture.level(destination - 1), sampler);
         pass.draw(3, 1, 0, 0);
       }
     }
+  }
+
+  private static boolean nativeFormat(GpuFormat format) {
+    return format == GpuFormat.RGBA8_UNORM
+        || format == GpuFormat.RGBA16_FLOAT
+        || format == GpuFormat.RG11B10_FLOAT;
   }
 
   @Override

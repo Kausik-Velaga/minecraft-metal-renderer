@@ -23,6 +23,10 @@ public final class MetalDevice implements GpuDeviceBackend {
     handle = MetalNative.createDevice();
     MetalShaderCompiler createdCompiler = null;
     try {
+      MetalNative.configureIndirectCommands(
+          handle,
+          Boolean.getBoolean("minecraftMetal.indirectCommandBuffers"),
+          Math.max(1, Integer.getInteger("minecraftMetal.indirectCommandBufferThreshold", 64)));
       createdCompiler = new MetalShaderCompiler();
       compiler = createdCompiler;
       encoder = new MetalCommandEncoder(this);
@@ -37,7 +41,13 @@ public final class MetalDevice implements GpuDeviceBackend {
               1.0f,
               new DeviceLimits(16, 256, 16384, 1L << 30, 65535, 8, 65535),
               new DeviceFeatures(true, false, true, true, true, true, true, true),
-              Set.of("CAMetalLayer", "MSL", "SPIRV-Cross"),
+              Set.of(
+                  "CAMetalLayer",
+                  "MSL",
+                  "SPIRV-Cross",
+                  "depth-comparison-lequal",
+                  "vertex-position-invariance",
+                  "color-attachment-load-discard"),
               new HintsAndWorkarounds(false, false, true, false),
               DeviceType.INTEGRATED);
       LoggerFactory.getLogger("MinecraftMetal")

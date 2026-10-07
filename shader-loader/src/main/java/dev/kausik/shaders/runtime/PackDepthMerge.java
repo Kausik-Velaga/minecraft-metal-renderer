@@ -94,9 +94,11 @@ public final class PackDepthMerge implements AutoCloseable {
 
   public void merge(PackRenderTargets targets) {
     if (closed) throw new IllegalStateException("Pack depth merger is closed");
+    targets.ensureDefined(targets.depth(0));
+    targets.ensureDefined(targets.depth(1));
     var descriptor =
         RenderPassDescriptor.builder(() -> "Shader-pack hand depth merge")
-            .withDepthAttachment(targets.depthMergeTarget().level(0))
+            .withDepthAttachment(targets.depthMergeTarget().level(0), OptionalDouble.of(1))
             .build();
     try (var pass = device.createCommandEncoder().createRenderPass(descriptor)) {
       pass.setPipeline(pipeline);

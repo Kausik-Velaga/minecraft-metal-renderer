@@ -46,6 +46,8 @@ public final class FrameUniforms {
   private final Map<String, float[]> matrices = new HashMap<>();
   private final Matrix4f projection = new Matrix4f();
   private final Matrix4f modelView = new Matrix4f();
+  private final Matrix4f cameraViewRotation = new Matrix4f();
+  private final Matrix4f cameraEffect = new Matrix4f();
   private final Matrix4f previousProjection = new Matrix4f();
   private final Matrix4f previousModelView = new Matrix4f();
   private final Matrix4f shadowProjection = new Matrix4f();
@@ -97,6 +99,12 @@ public final class FrameUniforms {
     return historyReset;
   }
 
+  /** Read the exact values that write() will upload; camera assumptions alone are insufficient. */
+  public boolean matchesMatrix(
+      dev.kausik.shaders.compile.MatrixUniformSpecialization.ZeroPattern pattern) {
+    return pattern.matches(matrices.get(pattern.uniform()));
+  }
+
   public Vector3fc sunDirectionWorld() {
     return sunWorld;
   }
@@ -112,6 +120,11 @@ public final class FrameUniforms {
 
   public Matrix4fc modelView() {
     return modelView;
+  }
+
+  /** Vanilla terrain uniforms need the unmodified camera rotation; the adapter adds effects. */
+  public Matrix4fc cameraViewRotation() {
+    return cameraViewRotation;
   }
 
   public Matrix4fc shadowProjection() {
@@ -150,16 +163,16 @@ public final class FrameUniforms {
     scalars.clear();
     vectors.clear();
     matrices.clear();
-    modelView.set(camera.viewRotationMatrix);
-    setProjection(hasCapturedProjection ? capturedProjection : camera.projectionMatrix);
+    updateCameraMatrices(
+        camera.projectionMatrix,
+        hasCapturedProjection ? capturedProjection : camera.projectionMatrix,
+        camera.viewRotationMatrix);
     hasCapturedProjection = false;
     if (historyReset) {
       previousProjection.set(projection);
       previousModelView.set(modelView);
       previousCameraPosition = cameraPosition;
     }
-    matrix("gbufferModelView", modelView);
-    matrix("gbufferModelViewInverse", new Matrix4f(modelView).invert());
     matrix("gbufferPreviousModelView", previousModelView);
     matrix("gbufferPreviousProjection", previousProjection);
     setShadowMatrices(shadowProjection, shadowModelView);
@@ -211,7 +224,7 @@ public final class FrameUniforms {
         (float) Math.toRadians(probe.getValue(EnvironmentAttributes.MOON_ANGLE, partialTicks));
     updateCelestial(
         skyAngle, moonAngle, pathRotation, level.dimension().equals(Level.END), modelView);
-    vector("upPosition", modelView.transformDirection(new Vector3f(0, 100, 0)));
+    vector("upPosition", modelView.transformDirection(new Vector3f(0, 1, 0)).normalize(100));
     put("endFlashIntensity", state.skyRenderState.endFlashIntensity);
     put(
         "previousEndFlashIntensity",
@@ -221,7 +234,7 @@ public final class FrameUniforms {
             .rotateY((float) Math.toRadians(180 - state.skyRenderState.endFlashYAngle))
             .rotateX((float) Math.toRadians(-90 - state.skyRenderState.endFlashXAngle))
             .transformDirection(new Vector3f(0, 100, 0));
-    vector("endFlashPosition", modelView.transformDirection(flash));
+    vector("endFlashPosition", modelView.transformDirection(flash).normalize(100));
     float rain = level.getRainLevel(partialTicks);
     float wetnessHalfLife =
         globals.floatConstant(
@@ -288,9 +301,10 @@ public final class FrameUniforms {
             ? new Vector3f(sunWorld).negate()
             : celestialDirection(moonAngle, pathRotation, new Vector3f());
     shadowWorld.set(!end && sunAngle > 0.5 ? moonWorld : sunWorld);
-    vector("sunPosition", view.transformDirection(new Vector3f(sunWorld).mul(100)));
-    vector("moonPosition", view.transformDirection(moonWorld.mul(100)));
-    vector("shadowLightPosition", view.transformDirection(new Vector3f(shadowWorld).mul(100)));
+    vector("sunPosition", view.transformDirection(new Vector3f(sunWorld)).normalize(100));
+    vector("moonPosition", view.transformDirection(moonWorld).normalize(100));
+    vector(
+        "shadowLightPosition", view.transformDirection(new Vector3f(shadowWorld)).normalize(100));
   }
 
   private static Vector3f celestialDirection(float angle, float pathRotation, Vector3f target) {
@@ -343,11 +357,31 @@ public final class FrameUniforms {
     hasCapturedProjection = true;
   }
 
-  /** Updates this frame immediately; use captureProjection for the preceding GameRenderer hook. */
+  /**
+   * Minecraft 26.3 places bob, hurt tilt and nausea in P*B. Legacy packs reconstruct depth using
+   * the diagonal of P inverse, so retain the symmetric perspective P and move B into model-view.
+   * Rasterization remains P*B*V; its inverse is now also valid for those optimized pack helpers.
+   */
+  void updateCameraMatrices(
+      Matrix4fc baseNativeProjection, Matrix4fc combinedNativeProjection, Matrix4fc viewRotation) {
+    cameraViewRotation.set(viewRotation);
+    cameraEffect.set(baseNativeProjection).invert().mul(combinedNativeProjection);
+    // Every vanilla camera effect is affine. Remove numerical residue from perspective inversion.
+    cameraEffect.m03(0).m13(0).m23(0).m33(1);
+    modelView.set(cameraEffect).mul(cameraViewRotation);
+    matrix("sl_CameraEffect", cameraEffect);
+    matrix("sl_CameraEffectInverse", new Matrix4f(cameraEffect).invert());
+    matrix("gbufferModelView", modelView);
+    matrix("gbufferModelViewInverse", new Matrix4f(modelView).invert());
+    setProjection(baseNativeProjection);
+  }
+
+  /** Updates the base perspective; use captureProjection to supply the combined native P*B. */
   public void setProjection(Matrix4fc nativeProjection) {
     projection.identity().m22(-2).m32(1).mul(nativeProjection);
     matrix("gbufferProjection", projection);
     matrix("gbufferProjectionInverse", new Matrix4f(projection).invert());
+    matrix("sl_TerrainModelViewProjection", new Matrix4f(projection).mul(modelView));
     if (historyReset) {
       previousProjection.set(projection);
       matrix("gbufferPreviousProjection", previousProjection);
@@ -364,6 +398,7 @@ public final class FrameUniforms {
     matrix("shadowProjectionInverse", new Matrix4f(shadowProjection).invert());
     matrix("shadowModelView", shadowModelView);
     matrix("shadowModelViewInverse", new Matrix4f(shadowModelView).invert());
+    matrix("sl_ShadowModelViewProjection", new Matrix4f(shadowProjection).mul(shadowModelView));
   }
 
   public void setDrawState(int stage, float alphaTestRef, int entityId, int blockEntityId) {

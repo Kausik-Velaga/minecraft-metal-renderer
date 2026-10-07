@@ -41,6 +41,7 @@ public final class ShadowLightConventionTest {
     verify(0, 0, path, true, new Vector3f(up).negate(), 0.25f);
     // A vertical light must also produce a finite, correctly oriented camera.
     verify(0, (float) Math.PI, 0, false, new Vector3f(0, 1, 0), 0.25f);
+    verifyTexelSnapping();
     if (args.length > 0) verifyBslCycle(Path.of(args[0]));
     System.out.println(
         "PASS: day, night and fixed End light uniforms match shadow camera direction and occlusion"
@@ -50,7 +51,7 @@ public final class ShadowLightConventionTest {
   private static void verify(
       float sky, float moon, float path, boolean end, Vector3f expected, float expectedCycle) {
     FrameUniforms uniforms = new FrameUniforms();
-    Matrix4f mainView = new Matrix4f().rotateX(0.37f).rotateY(-1.12f);
+    Matrix4f mainView = new Matrix4f().scale(1.06f, 1, 1).rotateX(0.37f).rotateY(-1.12f);
     uniforms.updateCelestial(sky, moon, path, end, mainView);
     ByteBuffer buffer = LAYOUT.allocate();
     uniforms.write(LAYOUT, buffer, false, false);
@@ -81,6 +82,36 @@ public final class ShadowLightConventionTest {
     near(receiver.y, occluder.y, "occluder projection Y");
     if (!(occluder.z < receiver.z))
       throw new AssertionError("Occluder toward the light does not precede receiver in depth");
+  }
+
+  private static void verifyTexelSnapping() {
+    Matrix4f orientation =
+        ShadowRenderer.lightView(new Vector3f(0.4f, 0.8f, -0.2f).normalize(), 64);
+    float texel = 128.0f / 1536;
+    // Move the camera through several texels while observing one fixed world point.
+    // Its shadow XY may only change by whole texels; sub-texel translation must cancel.
+    Vector3f point = new Vector3f(17, 70, -9);
+    Vector3f reference = new Matrix4f(orientation).transformPosition(new Vector3f(point));
+    for (int i = -50; i <= 50; i++) {
+      Vector3f camera = new Vector3f(i * 0.003f, i * -0.001f, i * 0.002f);
+      Matrix4f snapped = new Matrix4f(orientation);
+      ShadowRenderer.snapToTexels(snapped, camera.x, camera.y, camera.z, 64, 1536);
+      Vector3f projected = snapped.transformPosition(new Vector3f(point).sub(camera));
+      near(
+          (projected.x - reference.x) / texel,
+          Math.round((projected.x - reference.x) / texel),
+          "world-anchored shadow X");
+      near(
+          (projected.y - reference.y) / texel,
+          Math.round((projected.y - reference.y) / texel),
+          "world-anchored shadow Y");
+    }
+    Matrix4f distant = new Matrix4f(orientation);
+    ShadowRenderer.snapToTexels(distant, 29999999.25, 70, -29999999.75, 64, 1536);
+    if (!distant.isFinite()
+        || Math.abs(distant.m30() - orientation.m30()) > texel * 0.501f
+        || Math.abs(distant.m31() - orientation.m31()) > texel * 0.501f)
+      throw new AssertionError("Shadow snap loses precision at the world border");
   }
 
   private static void verifyBslCycle(Path path) throws Exception {

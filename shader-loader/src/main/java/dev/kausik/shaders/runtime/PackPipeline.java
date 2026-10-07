@@ -2,6 +2,9 @@ package dev.kausik.shaders.runtime;
 
 import com.mojang.renderpearl.api.device.GpuDevice;
 import com.mojang.renderpearl.api.pipeline.*;
+import com.mojang.renderpearl.frontend.FrontendGpuDevice;
+import dev.kausik.metal.MetalPipelineMath;
+import dev.kausik.metal.MetalPipelineResources;
 import dev.kausik.shaders.compile.ShaderCompatibilityCompiler;
 import dev.kausik.shaders.compile.TranslatedProgram;
 import dev.kausik.shaders.compile.UniformLayout;
@@ -33,13 +36,16 @@ public record PackPipeline(
     NOISE,
     NORMAL,
     SPECULAR,
+    MATERIAL,
     ALBEDO,
     LIGHTMAP,
     CUSTOM
   }
 
-  public record SamplerBinding(String name, String shaderName, SamplerKind kind, int index) {
-    static SamplerBinding of(String name) {
+  public record SamplerBinding(
+      String name, String shaderName, SamplerKind kind, int index, boolean comparison) {
+    static SamplerBinding of(TranslatedProgram.Sampler sampler) {
+      String name = sampler.name();
       SamplerKind kind;
       int index = 0;
       if (name.matches("colortex[0-9]+|gcolor|gdepth|gnormal|composite|gaux[1-4]")) {
@@ -66,12 +72,17 @@ public record PackPipeline(
               case "noisetex" -> SamplerKind.NOISE;
               case "normals" -> SamplerKind.NORMAL;
               case "specular" -> SamplerKind.SPECULAR;
+              case "materialtex" -> SamplerKind.MATERIAL;
               case "texture", "gtexture", "tex" -> SamplerKind.ALBEDO;
               case "lightmap" -> SamplerKind.LIGHTMAP;
               default -> SamplerKind.CUSTOM;
             };
       return new SamplerBinding(
-          name, ShaderCompatibilityCompiler.samplerShaderName(name), kind, index);
+          name,
+          ShaderCompatibilityCompiler.samplerShaderName(name),
+          kind,
+          index,
+          sampler.comparison());
     }
   }
 
@@ -87,6 +98,9 @@ public record PackPipeline(
       int renderStage,
       float alphaTestRef) {
     boolean fullscreen = original == null;
+    // Depth-only utilities retain Safe math; ordinary pack color programs may opt in.
+    boolean relaxedFragmentMath =
+        source.relaxedFragmentMath() && !translated.drawBuffers().isEmpty();
     var builder =
         RenderPipeline.builder()
             .withLocation(
@@ -96,7 +110,8 @@ public record PackPipeline(
                             .label()
                             .toLowerCase(java.util.Locale.ROOT)
                             .replaceAll("[^a-z0-9/._-]", "_")
-                        + (fullscreen ? "/screen" : "/" + original.getLocation().getPath())))
+                        + (fullscreen ? "/screen" : "/" + original.getLocation().getPath())
+                        + (relaxedFragmentMath ? "/math_relaxed_fragment" : "/math_safe")))
             .withVertexShader(Identifier.fromNamespaceAndPath("minecraft_shader_loader", "pack"))
             .withFragmentShader(Identifier.fromNamespaceAndPath("minecraft_shader_loader", "pack"))
             .withPrimitiveTopology(
@@ -181,8 +196,17 @@ public record PackPipeline(
           @Override
           public void close() {}
         };
-    CompiledRenderPipeline compiled =
-        device.compilePipeline(builder.build(), shaderSource, Runnable::run).join().finishCompile();
+    RenderPipeline description = builder.build();
+    CompiledRenderPipeline compiled;
+    // Direct executor and joined compilation keep the exact-name backend hint on this thread.
+    // Vertex compilation remains Safe; unsupported precision contracts fall back in the backend.
+    try (var math =
+        relaxedFragmentMath
+            ? MetalPipelineMath.openRelaxedFragment(description.getLocation().toString())
+            : null) {
+      compiled =
+          device.compilePipeline(description, shaderSource, Runnable::run).join().finishCompile();
+    }
     if (compiled == null)
       throw new IllegalStateException("Pack pipeline compilation failed: " + translated.label());
     String primarySampler =
@@ -194,6 +218,21 @@ public record PackPipeline(
                     .equals("core/rendertype_end_portal")
             ? "Sampler1"
             : "Sampler0";
+    // Strict frontend validation requires every declared binding, even when the compiled
+    // shaders never read it. Unknown backends also retain all dependencies. Otherwise use the
+    // backend's immutable activity facts to avoid preparing/binding unused pack textures.
+    var activeResources =
+        FrontendGpuDevice.STRICT_VALIDATION
+            ? Optional.<java.util.Set<String>>empty()
+            : MetalPipelineResources.activeResourceNames(compiled);
+    var samplerBindings =
+        translated.samplers().stream()
+            .map(SamplerBinding::of)
+            .filter(
+                sampler ->
+                    activeResources.isEmpty()
+                        || activeResources.get().contains(sampler.shaderName()))
+            .toList();
     return new PackPipeline(
         source,
         translated,
@@ -205,7 +244,7 @@ public record PackPipeline(
         renderStage,
         alphaTestRef,
         primarySampler,
-        translated.samplers().stream().map(s -> SamplerBinding.of(s.name())).toList());
+        samplerBindings);
   }
 
   @Override

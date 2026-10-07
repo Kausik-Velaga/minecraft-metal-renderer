@@ -1,0 +1,14 @@
+[
+  {
+    "file": "minecraft-metal-renderer-0.2.1.jar",
+    "version": "0.2.1",
+    "bytes": 138552,
+    "sha256": "bf22905cad81bf47773d2444dc3588afb755b34e27804c396d85fd41c007e4eb"
+  },
+  {
+    "file": "minecraft-shader-loader-0.1.2.jar",
+    "version": "0.1.2",
+    "bytes": 266156,
+    "sha256": "5b6fc96ce34ef550dd3f110168abaec74b30d4d81a217cf42ec4363fe96c97e5"
+  }
+]

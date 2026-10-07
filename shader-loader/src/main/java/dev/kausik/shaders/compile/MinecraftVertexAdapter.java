@@ -73,6 +73,13 @@ public final class MinecraftVertexAdapter {
 
   public static ShaderCompatibilityCompiler.VertexAdapter adapter(
       RenderPipeline pipeline, boolean shadow, boolean hand) {
+    return adapter(
+        pipeline, shadow, hand, Boolean.getBoolean("minecraftShaders.terrainFrameMatrices"));
+  }
+
+  /** Explicit mode is useful for GPU A/B validation without changing process-wide properties. */
+  public static ShaderCompatibilityCompiler.VertexAdapter adapter(
+      RenderPipeline pipeline, boolean shadow, boolean hand, boolean terrainFrameMatrices) {
     boolean terrain = bindings(pipeline).contains("TerrainUniform");
     String vertexId =
         pipeline.getShaders().get(com.mojang.renderpearl.api.pipeline.ShaderType.VERTEX).getPath();
@@ -82,6 +89,12 @@ public final class MinecraftVertexAdapter {
     boolean portal = vertexId.equals("core/rendertype_end_portal");
     boolean leash = vertexId.equals("core/rendertype_leash");
     boolean waterMask = vertexId.equals("core/rendertype_water_mask");
+    boolean frameTerrain =
+        terrainFrameMatrices && terrain && vertexId.equals("core/terrain") && !hand;
+    boolean screenOverlay =
+        vertexId.equals("core/position_tex_color")
+            && (pipeline.getLocation().getPath().endsWith("/block_screen_effect")
+                || pipeline.getLocation().getPath().endsWith("/fire_screen_effect"));
     boolean untextured =
         lines
             || vertexId.equals("core/position_color")
@@ -97,7 +110,11 @@ public final class MinecraftVertexAdapter {
     for (VertexFormat supplied : pipeline.getVertexFormatBindings()) {
       if (supplied == null) continue;
       VertexFormat format =
-          terrain && supplied.contains("Position") ? TerrainShaderGeometry.FORMAT : supplied;
+          terrain
+                  && supplied.contains("Position")
+                  && TerrainShaderGeometry.layoutFor(supplied) == null
+              ? TerrainShaderGeometry.layout().format()
+              : supplied;
       for (var element : format.getElements()) {
         String type = glslType(element.format());
         if (!names.add(element.name()))
@@ -176,15 +193,56 @@ public final class MinecraftVertexAdapter {
     if (!terrain && vertexId.equals("core/block")) position += " + ModelOffset";
     if (vertexId.equals("core/world_border")) position += " + ModelOffset";
     expressions.put("gl_Vertex", "vec4(" + position + ", 1.0)");
+    // Minecraft 26.3 folds bob/hurt/nausea into its projection. Legacy packs reconstruct
+    // depth using a symmetric projection, so frame uniforms move that camera effect into
+    // model-view. Cancel the same effect from each actual draw projection: this retains
+    // special sky/line projections and exactly preserves clip coordinates.
+    // Hand poses already contain their own bob/hurt and use a separate HUD projection.
     String modelView =
-        shadow ? "shadowModelView * gbufferModelViewInverse * ModelViewMat" : "ModelViewMat";
-    String projection = shadow ? "shadowProjection" : "sl_ToOpenGLProjection(ProjMat)";
+        shadow
+            ? "shadowModelView * gbufferModelViewInverse * sl_CameraEffect * ModelViewMat"
+            : hand ? "ModelViewMat" : "sl_CameraEffect * ModelViewMat";
+    String projection =
+        shadow
+            ? "shadowProjection"
+            : hand
+                ? "sl_ToOpenGLProjection(ProjMat)"
+                : "sl_ToOpenGLProjection(ProjMat) * sl_CameraEffectInverse";
+    Map<String, UniformLayout.Declaration> adapterUniforms = new LinkedHashMap<>();
+    if (!frameTerrain && (shadow || !hand))
+      adapterUniforms.put("sl_CameraEffect", new UniformLayout.Declaration("mat4", 0));
+    if (!frameTerrain && !shadow && !hand)
+      adapterUniforms.put("sl_CameraEffectInverse", new UniformLayout.Declaration("mat4", 0));
+    if (!frameTerrain && shadow) {
+      adapterUniforms.put("shadowModelView", new UniformLayout.Declaration("mat4", 0));
+      adapterUniforms.put("shadowProjection", new UniformLayout.Declaration("mat4", 0));
+      adapterUniforms.put("gbufferModelViewInverse", new UniformLayout.Declaration("mat4", 0));
+    }
+    String modelViewProjection = projection + " * " + modelView;
+    String normalMatrix = "transpose(inverse(mat3(" + modelView + ")))";
+    if (frameTerrain) {
+      // MC 26.3 LevelRenderer passes raw camera V to both terrain preparation paths. Our
+      // shadow replay does the same. Thus B*V is the already published gbuffer model-view,
+      // while S*(B*V)^-1*B*V is just the shadow model-view. Only core terrain has this contract;
+      // dynamic models, hand, sky and line draws retain their actual draw matrices above.
+      modelView = shadow ? "shadowModelView" : "gbufferModelView";
+      projection = shadow ? "shadowProjection" : "gbufferProjection";
+      String inverse = shadow ? "shadowModelViewInverse" : "gbufferModelViewInverse";
+      modelViewProjection =
+          shadow ? "sl_ShadowModelViewProjection" : "sl_TerrainModelViewProjection";
+      normalMatrix = "transpose(mat3(" + inverse + "))";
+      for (String name : List.of(modelView, projection, inverse, modelViewProjection))
+        adapterUniforms.put(name, new UniformLayout.Declaration("mat4", 0));
+    }
     // The documented MC_HAND_DEPTH multiplier acts on clip-space Z, before depth conversion.
-    if (hand && !shadow) projection = "sl_HandProjection(" + projection + ")";
+    if (hand && !shadow) {
+      projection = "sl_HandProjection(" + projection + ")";
+      modelViewProjection = projection + " * " + modelView;
+    }
     expressions.put("gl_ModelViewMatrix", modelView);
     expressions.put("gl_ProjectionMatrix", projection);
-    expressions.put("gl_ModelViewProjectionMatrix", projection + " * " + modelView);
-    expressions.put("gl_NormalMatrix", "transpose(inverse(mat3(" + modelView + ")))");
+    expressions.put("gl_ModelViewProjectionMatrix", modelViewProjection);
+    expressions.put("gl_NormalMatrix", normalMatrix);
     expressions.put("gl_TextureMatrix", "sl_PackTextureMatrices");
     expressions.put(
         "gl_Color",
@@ -195,6 +253,20 @@ public final class MinecraftVertexAdapter {
                 : terrain ? "vec4(1.0)" : "ColorModulator");
     if (names.contains("UV0")) expressions.put("gl_MultiTexCoord0", "vec4(UV0, 0.0, 1.0)");
     if (names.contains("UV2")) expressions.put("gl_MultiTexCoord1", "vec4(vec2(UV2), 0.0, 1.0)");
+    if (vertexId.equals("core/text")
+        && !names.contains("UV2")
+        && (pipeline.getShaderDefines().flags().contains("IS_GUI")
+            || pipeline.getShaderDefines().flags().contains("IS_SEE_THROUGH"))) {
+      // Vanilla core/text.vsh omits lightmap sampling entirely in these variants.
+      // Legacy packs still request its coordinate: encode both full-bright light channels,
+      // rather than the dark current-attribute default. Normal world text retains its UV2.
+      expressions.put("gl_MultiTexCoord1", "vec4(240.0, 240.0, 0.0, 1.0)");
+    }
+    if (screenOverlay && !names.contains("UV2")) {
+      // Vanilla first-person block/fire overlays are unlit textured XY quads.
+      expressions.put("gl_MultiTexCoord1", "vec4(240.0, 240.0, 0.0, 1.0)");
+      expressions.put("gl_Normal", "vec3(0.0, 0.0, 1.0)");
+    }
     if (untextured) {
       // These untextured draws have no texture coordinate arrays. Preserve OpenGL's
       // initial current texture coordinates when a pack shares a common vertex helper.
@@ -237,7 +309,12 @@ public final class MinecraftVertexAdapter {
     }
     expressions.put(
         "mc_Entity",
-        names.contains("PackEntity") ? "vec4(PackEntity, 0.0, 1.0)" : "vec4(-1.0, -1.0, 0.0, 1.0)");
+        names.contains("PackMetadata")
+            ? "vec4(float(int(PackMetadata << 16u) >> 16), float((PackMetadata >> 16u) & 1u) * 2.0"
+                  + " - 1.0, 0.0, 1.0)"
+            : names.contains("PackEntity")
+                ? "vec4(PackEntity, 0.0, 1.0)"
+                : "vec4(-1.0, -1.0, 0.0, 1.0)");
     if (names.contains("PackMidUV")) expressions.put("mc_midTexCoord", "vec4(PackMidUV, 0.0, 1.0)");
     else if (shadow
         && (vertexId.equals("core/entity")
@@ -253,12 +330,22 @@ public final class MinecraftVertexAdapter {
     }
     if (names.contains("PackTangent")) expressions.put("at_tangent", "PackTangent");
     if (names.contains("PackMidBlock")) expressions.put("at_midBlock", "PackMidBlock");
+    else if (names.contains("PackMetadata")) {
+      // The emitting block's center is independent of Position: mod geometry may extend outside
+      // its block. Keep float subtraction before multiplication, matching the full CPU record.
+      expressions.put(
+          "at_midBlock",
+          "((vec3((PackMetadata >> 17u) & 15u, (PackMetadata >> 21u) & 15u, (PackMetadata >> 25u) &"
+              + " 15u) + 0.5 - Position) * 64.0)");
+    }
     String initialization =
         "for (int i = 0; i < 8; ++i) sl_PackTextureMatrices[i] = mat4(1.0);\n"
             + "sl_PackTextureMatrices[1][0][0] = 1.0 / 256.0;\n"
             + "sl_PackTextureMatrices[1][1][1] = 1.0 / 256.0;\n"
             + "sl_PackTextureMatrices[1][3].xy = vec2(8.0 / 256.0);\n";
-    if (!terrain && pipeline.getShaderDefines().flags().contains("APPLY_TEXTURE_MATRIX"))
+    if (!terrain
+        && (pipeline.getShaderDefines().flags().contains("APPLY_TEXTURE_MATRIX")
+            || vertexId.equals("core/glint")))
       initialization += "sl_PackTextureMatrices[0] = TextureMat;\n";
     if (vertexId.equals("core/world_border"))
       initialization += "sl_PackTextureMatrices[0] = TextureMat;\n";
@@ -266,7 +353,7 @@ public final class MinecraftVertexAdapter {
     if (lines) initialization += "sl_ExpandLine();\n";
     if (vertexId.equals("core/debug_point")) initialization += "gl_PointSize = LineWidth;\n";
     return new ShaderCompatibilityCompiler.VertexAdapter(
-        declarations.toString(), initialization, expressions, attributes);
+        declarations.toString(), initialization, expressions, attributes, adapterUniforms);
   }
 
   /** Uniform blocks which the adapted shader actually declares, retaining vanilla names/layouts. */

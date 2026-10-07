@@ -12,7 +12,7 @@ Compatibility is **unknown**. No 26.3 Sodium source audit or runtime test has be
 
 **That 26.2 Sodium release was incompatible with the 26.2 Metal backend by source inspection.** It was not installed or launched for a runtime test. No Sodium code is included in this project.
 
-Audit performed October 2, 2026 against the official release tag [`mc26.2-0.9.2`](https://github.com/CaffeineMC/sodium/releases/tag/mc26.2-0.9.2), commit `6c26e7b7eded82ce5a1d27f9b147ce5d8de99b7a`. The inspection checkout is ignored development material under `.research/sodium-26.2`.
+Audit performed October 2, 2026 against the official release tag [`mc26.2-0.9.2`](https://github.com/CaffeineMC/sodium/releases/tag/mc26.2-0.9.2), commit `6c26e7b7eded82ce5a1d27f9b147ce5d8de99b7a`. The temporary inspection checkout was removed during October 3 cleanup; the pinned source links and findings below remain the historical record.
 
 | Area | Upstream behavior | Consequence for Metal |
 | --- | --- | --- |
@@ -28,4 +28,4 @@ For that release, an adapter would need explicit backend selection, a portable d
 
 ## Iris and shader packs
 
-The optional Minecraft Shader Loader 0.1.0 targets BSL 10.1.8 defaults with Minecraft Metal 0.2.1. See [shader compatibility and limitations](shader-loader.md) and [validation evidence](shader-validation.md). Iris and other packs remain unverified. No compatibility is claimed for mods that directly call OpenGL or Vulkan, cast concrete RenderPearl backend objects, or require shader resources not exposed by the vanilla render-pipeline binding API.
+Minecraft Shader Loader 0.1.3 and Scene Optimizer 0.1.0 pair with Minecraft Metal 0.2.2. The release includes Canopy 0.2.0 and Solstice 0.1.0; historical BSL 10.1.8 checks are documented separately. See [shader compatibility and limitations](shader-loader.md) and [validation evidence](shader-validation.md). Iris and other packs remain unverified. No compatibility is claimed for mods that directly call OpenGL or Vulkan, cast concrete RenderPearl backend objects, or require shader resources not exposed by the vanilla render-pipeline binding API.

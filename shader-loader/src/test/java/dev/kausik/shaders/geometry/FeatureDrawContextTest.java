@@ -20,15 +20,29 @@ public final class FeatureDrawContextTest {
     if (ShadowRenderer.skipPipeline(RenderPipelines.SOLID_TERRAIN)
         || ShadowRenderer.skipPipeline(RenderPipelines.SOLID_TERRAIN_MULTIDRAW)
         || ShadowRenderer.skipPipeline(RenderPipelines.ENTITY_SOLID)
+        || ShadowRenderer.skipPipeline(RenderPipelines.ENTITY_SOLID_GLINT)
+        || ShadowRenderer.skipPipeline(RenderPipelines.ARMOR_CUTOUT_NO_CULL_GLINT)
+        || ShadowRenderer.skipPipeline(RenderPipelines.ITEM_TRANSLUCENT_GLINT)
         || ShadowRenderer.skipPipeline(RenderPipelines.SOLID_BLOCK)) {
       throw new AssertionError("Real geometry was excluded from shadow rendering");
     }
     if (!ShadowRenderer.skipPipeline(RenderPipelines.LINES)) {
       throw new AssertionError("Debug lines were accepted as shadow casters");
     }
+    if (!ShadowRenderer.skipPipeline(RenderPipelines.GLINT)) {
+      throw new AssertionError("Standalone glint overlay was accepted as a shadow caster");
+    }
+    if (!ShadowRenderer.skipPipeline(RenderPipelines.CRUMBLING)) {
+      throw new AssertionError("Block-breaking decals were accepted as solid shadow casters");
+    }
     if (!ShadowRenderer.skipPipeline(RenderPipelines.BEACON_BEAM_OPAQUE)
         || !ShadowRenderer.skipPipeline(RenderPipelines.BEACON_BEAM_TRANSLUCENT)) {
       throw new AssertionError("Emissive beacon beams were accepted as solid shadow casters");
+    }
+    if (!ShadowRenderer.skipPipeline(RenderPipelines.LIGHTNING)
+        || !ShadowRenderer.skipPipeline(RenderPipelines.DRAGON_RAYS)) {
+      throw new AssertionError(
+          "Additive lightning and dragon rays were accepted as shadow casters");
     }
     var normal =
         new FeatureDrawContext.DrawTag(

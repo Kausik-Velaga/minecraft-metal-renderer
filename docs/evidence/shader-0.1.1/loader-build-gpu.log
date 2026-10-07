@@ -1,0 +1,184 @@
+
+> Configure project :
+Fabric Loom: 1.18.2
+
+> Configure project :shader-loader
+Fabric Loom: 1.18.2
+
+> Task :compileJava UP-TO-DATE
+
+> Task :shader-loader:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :shader-loader:processResources UP-TO-DATE
+> Task :shader-loader:classes
+> Task :shader-loader:processIncludeJars UP-TO-DATE
+> Task :shader-loader:jar
+> Task :shader-loader:sourcesJar
+> Task :shader-loader:assemble
+> Task :configureNative UP-TO-DATE
+> Task :buildNative UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :processIncludeJars UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :shader-loader:compileTestJava
+> Task :shader-loader:processTestResources NO-SOURCE
+> Task :shader-loader:testClasses
+
+> Task :shader-loader:alphaDiscardTest
+2026-10-03 00:18:05.899 java[29347:9544605] Metal API Validation Enabled
+[00:18:05] [main/INFO]: Metal device created: Apple M3 Pro. Native SDL presentation, no OpenGL context.
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: every alpha comparator preserves color/depth rejection and early-return fragment semantics
+
+> Task :shader-loader:compileBenchmarkJava
+> Task :shader-loader:processBenchmarkResources UP-TO-DATE
+> Task :shader-loader:benchmarkClasses
+
+> Task :shader-loader:benchmarkStatisticsTest
+PASS: benchmark statistics retain stalls and calculate throughput from elapsed time
+
+> Task :shader-loader:cameraMatrixConventionTest
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:~/.gradle/caches/modules-2/files-2.1/org.joml/joml/1.10.9/438e036486bad66b189bff385dd07dea4f74a146/joml-1.10.9.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: bob, hurt and nausea preserve rasterization, legacy depth reconstruction and stable shadow geometry; old maximum error=29.932753 blocks
+
+> Task :shader-loader:cameraProjectionGpuTest
+2026-10-03 00:18:07.162 java[29418:9544867] Metal API Validation Enabled
+[00:18:07] [main/INFO]: Metal device created: Apple M3 Pro. Native SDL presentation, no OpenGL context.
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: real Metal world/special-projection/hand clip coordinates are unchanged while bobbed pack depth reconstructs the actual surface
+
+> Task :shader-loader:compatibilityTest
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: GLSL interface lowering, inactive feature rejection, std140 writes, adapter compilation; 0 supplied shader pairs compiled
+
+> Task :shader-loader:depthMergeTest
+2026-10-03 00:18:08.605 java[29421:9544957] Metal API Validation Enabled
+[00:18:08] [main/INFO]: Metal device created: Apple M3 Pro. Native SDL presentation, no OpenGL context.
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: late hand depth merges preserve all three depth meanings; history resets both color sides
+
+> Task :shader-loader:dynamicBlockGeometryTest
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: vanilla dynamic block mesher retains actual normals and consistent draw formats
+
+> Task :shader-loader:featureDrawContextTest
+Feature tags passed: actual overlays, equal-material batching, strict order, frame lifetime, shadow pipeline filtering.
+
+> Task :shader-loader:mipmapTest
+2026-10-03 00:18:10.298 java[29490:9545255] Metal API Validation Enabled
+[00:18:10] [main/INFO]: Metal device created: Apple M3 Pro. Native SDL presentation, no OpenGL context.
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: mip pipelines compile for all pack color formats; square, one-axis, and HDR mip chains match GPU readback
+
+> Task :shader-loader:packCoordinatesTest
+2026-10-03 00:18:11.057 java[29530:9545391] Metal API Validation Enabled
+[00:18:11] [main/INFO]: Metal device created: Apple M3 Pro. Native SDL presentation, no OpenGL context.
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: geometry projection, gl_FragCoord and fullscreen texture UVs share one Y convention
+
+> Task :shader-loader:packProgramsValidationTest
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: active unsupported rendering declarations are rejected; failed sampler/pipeline creation releases resources; image dimensions are checked before decoding
+
+> Task :shader-loader:packTest
+BSL snapshot: 292 files, 367 options, 185 shader stages expanded; rendering not exercised
+Shader pack checks passed: 286
+
+> Task :shader-loader:portalGeometryTest
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: all six portal face normals survive actual face winding and transformed geometry
+
+> Task :shader-loader:shadowComparisonTest
+2026-10-03 00:18:17.688 java[29829:9546287] Metal API Validation Enabled
+[00:18:17] [main/INFO]: Metal device created: Apple M3 Pro. Native SDL presentation, no OpenGL context.
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: linear shadow comparisons interpolate four depth comparisons and clamp edges correctly
+
+> Task :shader-loader:shadowLightConventionTest
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:~/.gradle/caches/modules-2/files-2.1/org.joml/joml/1.10.9/438e036486bad66b189bff385dd07dea4f74a146/joml-1.10.9.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: day, night and fixed End light uniforms match shadow camera direction and occlusion depth
+
+> Task :shader-loader:terrainAlbedoSamplingTest
+2026-10-03 00:18:18.731 java[29831:9546365] Metal API Validation Enabled
+[00:18:18] [main/INFO]: Metal device created: Apple M3 Pro. Native SDL presentation, no OpenGL context.
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: block-atlas magnification stays crisp; minification, mip blending, max LOD, addressing, anisotropy and sampler ownership are retained
+
+> Task :shader-loader:terrainGeometryTest
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+Terrain geometry passed: normals, UV handedness, quad centers, materials.
+
+> Task :shader-loader:test
+> Task :shader-loader:validateAccessWidener NO-SOURCE
+
+> Task :shader-loader:waterMaskTest
+2026-10-03 00:18:20.198 java[29900:9546611] Metal API Validation Enabled
+[00:18:20] [main/INFO]: Metal device created: Apple M3 Pro. Native SDL presentation, no OpenGL context.
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: actual vanilla boat mask writes pack depth while preserving every scene color pixel
+
+> Task :shader-loader:check
+> Task :shader-loader:build
+
+> Task :shader-loader:bslShaderSmokeTest
+2026-10-03 00:18:21.132 java[29930:9546813] Metal API Validation Enabled
+[00:18:21] [main/INFO]: Metal device created: Apple M3 Pro. Native SDL presentation, no OpenGL context.
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:~/.gradle/caches/modules-2/files-2.1/org.lwjgl/lwjgl/3.4.3/7ab5265a73d8a959ed62332d546536ae6be2f0d5/lwjgl-3.4.3.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+PASS: 123 shader-pack pipelines, including Minecraft vertex adapters, compiled by Metal in 5.423 s
+
+[Incubating] Problems report is available at: file://~/Programs/minecraft-metal-renderer/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 22s
+34 actionable tasks: 25 executed, 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.7.1/userguide/configuration_cache_enabling.html

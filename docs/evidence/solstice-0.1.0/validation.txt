@@ -1,0 +1,16 @@
+PASS: Solstice HDR, depth-only shadows, resource dependencies and disabled effects
+PASS: day, night and fixed End light uniforms match shadow camera direction and occlusion depth
+PASS: active unsupported rendering declarations are rejected; failed sampler/pipeline creation releases resources; image dimensions are checked before decoding
+PASS: 490 shader-pack pipelines, including every eligible registered Minecraft route, compiled by Metal in 6.604 s
+PASS: benchmark statistics retain stalls and calculate throughput from elapsed time
+BUILD SUCCESSFUL in 10s
+PASS: active unsupported rendering declarations are rejected; failed sampler/pipeline creation releases resources; image dimensions are checked before decoding
+PASS: day, night and fixed End light uniforms match shadow camera direction and occlusion depth
+PASS: Solstice HDR, depth-only shadows, resource dependencies and disabled effects
+PASS: late hand depth merges preserve all three depth meanings; history resets both color sides
+PASS: 55 exact eager/lazy GPU observations across all mips, partial draws, pre-write reads, depth snapshots, shadow copies, late allocation, flips and history resets
+PASS: benchmark statistics retain stalls and calculate throughput from elapsed time
+BUILD SUCCESSFUL in 5s
+Shader client validation completed: Day/night, water, glass, shadows, entities, hurt overlays, particles, movement, rain, resize, reload, underwater, portals, beacon beams, boat water masks, leashes and survival leaf breaking, sunrise walking with view bob, visible/occluded name labels, uniform-font text displays/backgrounds, enchanted hand submission, fire overlay and menu. Visual inspection is separately required.
+Shader client validation completed: Natural terrain, movement, night, Nether and End transitions. Visual inspection is separately required.
+Visually inspected day, night, underwater, Nether, End, and native forest captures. Other gameplay scenarios passed automated assertions; not every screenshot received a manual visual audit.

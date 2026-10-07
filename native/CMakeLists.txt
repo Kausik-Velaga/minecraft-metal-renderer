@@ -17,7 +17,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/shaders/presentation.metal" METAL_PRESENTATION_SOURCE)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/shaders/clear.metal" METAL_CLEAR_SOURCE)
 configure_file(Shaders.hpp.in "${CMAKE_CURRENT_BINARY_DIR}/generated/MetalShaders.hpp" @ONLY)
-add_library(minecraft_metal SHARED MetalContext.mm MetalFormats.mm MetalResources.mm MetalCommands.mm MetalPresentation.mm)
+add_library(minecraft_metal SHARED MetalContext.mm MetalStageTimings.mm MetalFormats.mm MetalResources.mm MetalCommands.mm MetalPresentation.mm)
 target_include_directories(minecraft_metal PRIVATE ${JNI_INCLUDE_DIRS} "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_compile_options(minecraft_metal PRIVATE -fobjc-arc -Wall -Wextra -Wno-unused-parameter)
 target_link_libraries(minecraft_metal PRIVATE "-framework Metal" "-framework Cocoa" "-framework QuartzCore")

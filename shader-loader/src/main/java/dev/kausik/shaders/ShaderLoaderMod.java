@@ -48,7 +48,8 @@ public final class ShaderLoaderMod implements ClientModInitializer {
           new BlockMaterialMap(MaterialMappings.load(pack, options, environment));
       ShaderRuntime runtime = new ShaderRuntime(pack, options, properties);
       runtime.uniforms().setItemIdResolver(materials::itemId);
-      TerrainShaderGeometry.configure(materials, Boolean.parseBoolean(separateAo));
+      TerrainShaderGeometry.configure(
+          materials, Boolean.parseBoolean(separateAo), materials.allBlockIdsFitSigned16());
       FeatureDrawContext.configure(materials::entityTypeId, materials);
       ShaderRuntime.install(runtime);
       LOGGER.info(

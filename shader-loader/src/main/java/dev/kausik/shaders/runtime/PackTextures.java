@@ -5,6 +5,10 @@ import com.mojang.renderpearl.api.device.GpuDevice;
 import com.mojang.renderpearl.api.textures.AddressMode;
 import com.mojang.renderpearl.api.textures.FilterMode;
 import com.mojang.renderpearl.api.textures.GpuSampler;
+import com.mojang.renderpearl.api.textures.GpuTexture;
+import com.mojang.renderpearl.api.textures.GpuTextureView;
+import dev.kausik.metal.MetalGpuSampler;
+import dev.kausik.shaders.compile.ShaderCompatibilityCompiler.ShadowComparison;
 import dev.kausik.shaders.pack.ShaderPack;
 import dev.kausik.shaders.pack.ShaderProperties;
 import java.awt.image.BufferedImage;
@@ -22,15 +26,30 @@ import javax.imageio.stream.MemoryCacheImageInputStream;
 /** Decodes user pack images once; GPU textures and samplers are reused for every frame. */
 public final class PackTextures implements AutoCloseable {
   public final GpuSampler linear, nearest, repeat;
+  private final GpuSampler comparison;
   public final PackTexture white, black, normal, noise;
   private final Map<String, PackTexture> custom = new HashMap<>();
   private final List<PackTexture> owned = new ArrayList<>();
   private final GpuDevice device;
+  private final PackAlbedoSamplers albedoSamplers;
 
   public PackTextures(GpuDevice device, ShaderPack pack, ShaderProperties properties)
       throws IOException {
+    this(device, pack, properties, ShadowComparison.EMULATED);
+  }
+
+  public PackTextures(
+      GpuDevice device,
+      ShaderPack pack,
+      ShaderProperties properties,
+      ShadowComparison shadowComparison)
+      throws IOException {
     this.device = device;
-    GpuSampler createdLinear = null, createdNearest = null, createdRepeat = null;
+    albedoSamplers = new PackAlbedoSamplers(device);
+    GpuSampler createdLinear = null,
+        createdNearest = null,
+        createdRepeat = null,
+        createdComparison = null;
     try {
       createdLinear =
           device.createSampler(
@@ -56,6 +75,15 @@ public final class PackTextures implements AutoCloseable {
               FilterMode.LINEAR,
               1,
               OptionalDouble.of(0));
+      if (shadowComparison == ShadowComparison.HARDWARE)
+        createdComparison =
+            MetalGpuSampler.comparisonVariant(createdLinear)
+                .orElseThrow(
+                    () ->
+                        new IllegalStateException(
+                            "Backend advertised depth comparison but could not create its"
+                                + " sampler"));
+      comparison = createdComparison;
       linear = createdLinear;
       nearest = createdNearest;
       repeat = createdRepeat;
@@ -74,11 +102,29 @@ public final class PackTextures implements AutoCloseable {
       noise = suppliedNoise == null ? generatedNoise() : suppliedNoise;
     } catch (IOException | RuntimeException failure) {
       closeTextures();
+      if (createdComparison != null) createdComparison.close();
       if (createdRepeat != null) createdRepeat.close();
       if (createdNearest != null) createdNearest.close();
       if (createdLinear != null) createdLinear.close();
       throw failure;
     }
+  }
+
+  /** Compile strategy and binding state must be selected together, once per pack graph. */
+  public static ShadowComparison shadowComparison(GpuDevice device) {
+    return Boolean.parseBoolean(
+                System.getProperty("minecraftShaders.hardwareShadowComparison", "true"))
+            && device.getDeviceInfo().underlyingExtensions().contains("depth-comparison-lequal")
+        ? ShadowComparison.HARDWARE
+        : ShadowComparison.EMULATED;
+  }
+
+  public GpuSampler comparisonSampler() {
+    return comparison == null ? nearest : comparison;
+  }
+
+  public boolean hardwareShadowComparison() {
+    return comparison != null;
   }
 
   private PackTexture solid(String name, int r, int g, int b, int a) {
@@ -153,9 +199,16 @@ public final class PackTextures implements AutoCloseable {
     return custom.get(group + "." + sampler);
   }
 
+  public GpuSampler albedoSampler(
+      GpuTextureView texture, GpuTexture blockAtlas, GpuSampler supplied) {
+    return albedoSamplers.forTexture(texture, blockAtlas, supplied);
+  }
+
   @Override
   public void close() {
     closeTextures();
+    albedoSamplers.close();
+    if (comparison != null) comparison.close();
     repeat.close();
     nearest.close();
     linear.close();

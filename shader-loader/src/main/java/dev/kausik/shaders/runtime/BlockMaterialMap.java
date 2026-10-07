@@ -64,6 +64,14 @@ public final class BlockMaterialMap implements ToIntFunction<BlockState> {
     return blocks.size();
   }
 
+  /** Includes the complete frozen registry; any future unmapped state resolves to -1. */
+  public boolean allBlockIdsFitSigned16() {
+    for (int id : blocks.values()) {
+      if (id < Short.MIN_VALUE || id > Short.MAX_VALUE) return false;
+    }
+    return true;
+  }
+
   public int itemId(ItemStack stack) {
     return stack.isEmpty() ? -1 : itemId(stack.getItem());
   }

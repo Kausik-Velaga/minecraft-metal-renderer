@@ -11,6 +11,12 @@ public record SceneProgram(String name, int stage) {
   public static SceneProgram select(
       RenderPipeline pipeline, boolean hand, boolean shadow, boolean blockEntity) {
     String path = pipeline.getLocation().getPath();
+    boolean standaloneGlint =
+        pipeline
+            .getShaders()
+            .get(com.mojang.renderpearl.api.pipeline.ShaderType.VERTEX)
+            .getPath()
+            .equals("core/glint");
     String stage;
     String name;
     if (path.contains("terrain") || path.contains("wireframe")) {
@@ -41,7 +47,7 @@ public record SceneProgram(String name, int stage) {
     } else if (path.contains("beacon")) {
       name = "gbuffers_beaconbeam";
       stage = "BLOCK_ENTITIES";
-    } else if (path.contains("glint")) {
+    } else if (standaloneGlint) {
       name = "gbuffers_armor_glint";
       stage = "ENTITIES";
     } else if (path.contains("leash") || path.contains("water_mask")) {
@@ -75,7 +81,11 @@ public record SceneProgram(String name, int stage) {
     }
     if (hand) {
       boolean translucent = path.contains("translucent");
-      name = translucent ? "gbuffers_hand_water" : "gbuffers_hand";
+      // The standalone enchantment overlay stays a glint pass in first person. Its
+      // adapter still applies the hand projection/depth convention. Combined vanilla
+      // item/entity materials retain their existing base hand program.
+
+      if (!standaloneGlint) name = translucent ? "gbuffers_hand_water" : "gbuffers_hand";
       stage = translucent ? "HAND_TRANSLUCENT" : "HAND_SOLID";
     }
     return new SceneProgram(shadow ? "shadow" : name, PackEnvironment.stage(stage));

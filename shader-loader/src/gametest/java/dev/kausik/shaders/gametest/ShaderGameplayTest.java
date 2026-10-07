@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
@@ -28,6 +29,7 @@ import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
 
 /** Disposable, deterministic scene for visual review of an externally supplied shader pack. */
 @SuppressWarnings("UnstableApiUsage")
@@ -44,6 +46,11 @@ public final class ShaderGameplayTest implements FabricClientGameTest {
           // The loader must select its compatible draw order without mutating the saved preference.
           client.options.improvedTransparency().set(true);
         });
+    if ("materials".equals(System.getProperty("minecraftShaders.testScenario"))) {
+      ShaderMaterialScenario.run(context);
+      complete("Material masks, atlas reload and steady-state reuse");
+      return;
+    }
     if ("natural".equals(System.getProperty("minecraftShaders.testScenario"))) {
       ShaderNaturalScenario.run(context);
       complete("Natural terrain, movement, night, Nether and End transitions");
@@ -130,6 +137,10 @@ public final class ShaderGameplayTest implements FabricClientGameTest {
         world.getConnection().waitForClientboundPackets();
         world.getConnection().waitForChunksRender();
       }
+      breakLeafFixture(context, world);
+      ShaderWalkingScenario.run(context, world);
+      ShaderNameTagScenario.run(context, world);
+      ShaderHandEffectsScenario.run(context, world);
       context.runOnClient(
           client -> {
             if (!client.options.improvedTransparency().get())
@@ -137,11 +148,125 @@ public final class ShaderGameplayTest implements FabricClientGameTest {
           });
     }
     context.waitTicks(5);
-    screenshot(context, "12-bsl-menu");
+    screenshot(context, "14-bsl-menu");
     complete(
         "Day/night, water, glass, shadows, entities, hurt overlays, particles, movement, rain,"
             + " resize, reload, underwater, portals, beacon beams, boat water masks, leashes and"
-            + " menu");
+            + " survival leaf breaking, sunrise walking with view bob, visible/occluded name"
+            + " labels, uniform-font text displays/backgrounds, enchanted hand submission, fire"
+            + " overlay and menu");
+  }
+
+  private static void breakLeafFixture(
+      ClientGameTestContext context, TestSingleplayerContext world) {
+    var server = world.getServer();
+    BlockPos target = new BlockPos(11, -53, 12);
+    BlockPos retained = new BlockPos(12, -53, 12);
+    Map<BlockPos, BlockState> previous =
+        server.computeOnServer(
+            instance -> {
+              var level = instance.getLevel(Level.OVERWORLD);
+              return Map.of(
+                  target, level.getBlockState(target), retained, level.getBlockState(retained));
+            });
+    try {
+      server.runCommand("setblock 11 -53 12 minecraft:oak_leaves[persistent=true]");
+      server.runCommand("setblock 12 -53 12 minecraft:oak_leaves[persistent=true]");
+      server.runCommand("clear @a");
+      server.runCommand("gamemode survival @a");
+      // Preserve a real mining crack for several rendered frames without synthesizing a decal.
+      server.runCommand("effect give @a minecraft:mining_fatigue 30 1 true");
+      server.runCommand("tp @a 11.5 -54.0 15.5 180 0");
+      world.getConnection().waitForClientboundPackets();
+      world.getConnection().waitForChunksRender();
+      context.getInput().lookAt(target);
+      context.waitTicks(20);
+      context.runOnClient(
+          client -> {
+            if (!(client.hitResult instanceof BlockHitResult hit)
+                || !hit.getBlockPos().equals(target))
+              throw new AssertionError(
+                  "Leaf-breaking fixture did not target its leaf: " + client.hitResult);
+            if (!client.player.getMainHandItem().isEmpty()
+                || client.gameMode.getPlayerMode().isCreative())
+              throw new AssertionError("Leaf-breaking fixture must use an empty survival hand");
+          });
+      context.getInput().holdKey(options -> options.keyAttack);
+      context.waitFor(
+          client -> client.gameMode.isDestroying() && client.gameMode.getDestroyStage() >= 3, 200);
+      context.runOnClient(
+          client -> {
+            if (!client.level.getBlockState(target).is(Blocks.OAK_LEAVES))
+              throw new AssertionError(
+                  "Leaf disappeared before its crack overlay could be captured");
+          });
+      screenshot(context, "12-bsl-leaf-breaking-cracks");
+      context.runOnClient(client -> assertLeafBreakingPipelines());
+      context.waitFor(client -> client.level.getBlockState(target).isAir(), 200);
+      context.getInput().releaseKey(options -> options.keyAttack);
+      server.waitFor(
+          instance -> instance.getLevel(Level.OVERWORLD).getBlockState(target).isAir(), 200);
+      world.getConnection().waitForClientboundPackets();
+      world.getConnection().waitForChunksRender();
+      context.waitTicks(10);
+      context.runOnClient(
+          client -> {
+            if (!client.level.getBlockState(target).isAir()
+                || !client.level.getBlockState(retained).is(Blocks.OAK_LEAVES))
+              throw new AssertionError(
+                  "Leaf mining did not remove exactly the targeted fixture block");
+            assertLeafBreakingPipelines();
+          });
+      screenshot(context, "13-bsl-leaf-removed-caster-retained");
+    } finally {
+      context.getInput().releaseKey(options -> options.keyAttack);
+      server.runCommand("effect clear @a minecraft:mining_fatigue");
+      server.runCommand("gamemode creative @a");
+      server.runCommand("give @a minecraft:diamond_sword");
+      server.runCommand("tp @a 11.5 -54.0 14.5 145 27");
+      server.runOnServer(
+          instance ->
+              previous.forEach(
+                  (position, state) ->
+                      instance.getLevel(Level.OVERWORLD).setBlock(position, state, 3)));
+      world.getConnection().waitForClientboundPackets();
+      world.getConnection().waitForChunksRender();
+    }
+  }
+
+  private static void assertLeafBreakingPipelines() {
+    try {
+      var field = ShaderRuntime.class.getDeclaredField("geometry");
+      field.setAccessible(true);
+      Map<?, ?> variants = (Map<?, ?>) field.get(ShaderRuntime.get());
+      boolean mainCrumbling = false, normalShadowCaster = false;
+      for (Object variant : variants.keySet()) {
+        var shadowAccessor = variant.getClass().getDeclaredMethod("shadow");
+        var originalAccessor = variant.getClass().getDeclaredMethod("original");
+        shadowAccessor.setAccessible(true);
+        originalAccessor.setAccessible(true);
+        boolean shadow = (boolean) shadowAccessor.invoke(variant);
+        RenderPipeline pipeline = (RenderPipeline) originalAccessor.invoke(variant);
+        String path = pipeline.getLocation().getPath();
+        if (path.endsWith("/crumbling")) {
+          if (shadow)
+            throw new AssertionError("Block damage decal was compiled as a shadow caster");
+          mainCrumbling = true;
+        }
+        if (shadow && path.contains("terrain")) normalShadowCaster = true;
+      }
+      if (!mainCrumbling || !normalShadowCaster)
+        throw new AssertionError(
+            "Missing real leaf-break draw coverage: main crumbling="
+                + mainCrumbling
+                + ", ordinary terrain shadow="
+                + normalShadowCaster);
+      System.out.println(
+          "Leaf-breaking fixture: real main CRUMBLING draw, no shadow CRUMBLING, normal terrain"
+              + " shadows retained");
+    } catch (ReflectiveOperationException failure) {
+      throw new AssertionError("Could not inspect leaf-breaking draw coverage", failure);
+    }
   }
 
   private record FeatureFixture(Map<BlockPos, BlockState> blocks, List<UUID> entities) {}
@@ -251,7 +376,9 @@ public final class ShaderGameplayTest implements FabricClientGameTest {
     if (name.startsWith("01-")
         || name.startsWith("04-")
         || name.startsWith("09-")
-        || name.startsWith("10-")) {
+        || name.startsWith("10-")
+        || name.startsWith("12-")
+        || name.startsWith("13-")) {
       context.runOnClient(
           client ->
               ShaderImageDiagnostics.capture(

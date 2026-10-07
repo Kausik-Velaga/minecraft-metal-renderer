@@ -1,24 +1,29 @@
 # Shader packs with Minecraft Metal
 
-Minecraft Shader Loader is an optional second Fabric mod. Minecraft Metal runs without it; shader
-packs require both mods. The initial compatibility target is **BSL 10.1.8 with its default settings**
-on Minecraft Java **26.3**, Apple Silicon, and the Metal backend. This is experimental support.
+Minecraft Shader Loader is an optional Fabric mod. Minecraft Metal runs without it;
+shader packs require both mods. The release includes our original **Canopy 0.2.0**
+and **Solstice 0.1.0** packs for Minecraft Java **26.3** and Apple Silicon.
+Scene Optimizer 0.1.0 is an optional third mod for scene preparation.
 
 ## Install and select a pack
 
-1. Use a separate Minecraft 26.3 Fabric profile. See the [renderer installation guide](installation.md).
-2. Put `minecraft-metal-renderer-0.2.1.jar` and `minecraft-shader-loader-0.1.0.jar` in that profile's
-   `mods` folder. Remove older copies of either mod. Fabric API is optional.
-3. Obtain BSL 10.1.8 from its author or official distribution page. Put its ZIP, intact, in the
-   profile's `shaderpacks` folder. The pack is not included in either mod.
-4. Create `config/minecraft-shader-loader.properties` inside the same profile, containing:
+1. Use a separate Minecraft 26.3 Fabric profile. See the [installation guide](installation.md).
+2. Put `minecraft-metal-renderer-0.2.2.jar`, `minecraft-shader-loader-0.1.3.jar`, and optionally
+   `minecraft-scene-optimizer-0.1.0.jar` in `mods`. Remove older copies. Fabric API is not required.
+3. Put `Canopy-0.2.0.zip` and `Solstice-0.1.0.zip`, intact, in `shaderpacks`.
+4. Create or edit `config/minecraft-shader-loader.properties` in that profile:
 
    ```properties
-   pack=BSL_v10.1.8.zip
+   pack=Canopy-0.2.0.zip
+   profile=BALANCED
    ```
 
-5. Start Minecraft and enter a world. The first world load compiles the pack's programs. Logs identify
-   the selected pack, Metal device, dimension, and render size.
+   To select Solstice, use `pack=Solstice-0.1.0.zip`. Remove incompatible `option.*` entries
+   when switching packs. The suite ZIP includes a fresh-profile Canopy configuration.
+5. Start Minecraft and enter a world. The first load compiles the pack's programs.
+
+BSL 10.1.8 was the initial compatibility target and has historical validation records.
+Obtain it separately from its author if needed; no BSL files are included in this release.
 
 There is no shader settings screen yet. Restart Minecraft after changing the selected pack or its
 options. An absent or empty `pack` setting leaves ordinary rendering active. To remove shader
@@ -50,17 +55,21 @@ settings remain controlled by the pack.
 - BSL's host autofocus mode (`DOF=true`, `DOF_FOCUS_MODE=0`) is rejected because the loader does not
   supply its required center-depth history. The pack's depth-texture focus mode 1 can compile; the
   default configuration keeps depth of field off.
-- Advanced material maps, PBR resource packs, arbitrary shader packs, and combinations with other
-  rendering mods have not been validated. Default normal/specular fallback textures are supplied;
-  material-map discovery is not implemented.
+- Canopy uses the loader's optional MERS material atlas; see [material maps and resource-pack
+  overrides](materials.md). Normal maps, nonuniform animated material masks and separate entity
+  atlases remain unsupported. Legacy normal/specular samplers retain fallback/custom behavior.
+  Arbitrary PBR resource packs and combinations with other rendering mods are unverified.
 - Spectral-effect entities do not yet select the optional pack `gbuffers_entities_glowing`
   program. Emissive materials retain their ordinary entity route.
+- Minecraft 26.3 materials that combine an item's base color and enchantment glint in one draw
+  retain their base rendering, but separate pack glint layering is not yet implemented for those
+  fused materials. Standalone glint draws retain their texture transform and pack program.
 - Sodium and Iris are not required. Combining other rendering replacements with this pair is
   unverified. The loader has no tested backend other than Minecraft Metal.
 
-Install the paired versions from the same release. Loader 0.1.0 requires renderer 0.2.1 or a compatible
-0.2.x patch; renderer 0.2.0 lacks a mipmap-size fix required by the loader. New Minecraft versions
-need a fresh compatibility check even if a shader pack itself has not changed.
+Install the matching versions from the same release. Loader 0.1.3 and Scene Optimizer 0.1.0
+require renderer 0.2.2 (or a compatible 0.2.x patch). New Minecraft versions need a fresh
+compatibility check even if a shader pack itself has not changed.
 
 ## Reporting a problem
 

@@ -17,12 +17,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Places true shadow and deferred passes at the boundaries of Minecraft's scene graph. */
 @Mixin(LevelRenderer.class)
-public abstract class LevelRendererShaderMixin implements ShadowRenderer.LevelAccess {
+public abstract class LevelRendererShaderMixin {
   @Shadow private ViewArea viewArea;
 
-  @Override
-  public ViewArea shaders$viewArea() {
-    return viewArea;
+  @Inject(
+      method = {"close", "resetLevelRenderData"},
+      at = @At("HEAD"))
+  private void shaders$releaseExtraction(CallbackInfo callback) {
+    ShadowRenderer.beginExtraction();
   }
 
   @Inject(method = "addMainPass", at = @At("HEAD"))
@@ -36,6 +38,14 @@ public abstract class LevelRendererShaderMixin implements ShadowRenderer.LevelAc
     if (ShaderRuntime.isRendering()) {
       ShadowRenderer.render((LevelRenderer) (Object) this, viewArea, features, terrainFog);
     }
+  }
+
+  @Inject(
+      method = "render",
+      at = @At(value = "INVOKE",
+          target = "Lnet/minecraft/client/renderer/feature/FeatureRenderDispatcher;prepareFrame(Lnet/minecraft/client/renderer/SubmitNodeStorage;)Lnet/minecraft/client/renderer/feature/FeatureRenderDispatcher$PreparedFrame;"))
+  private void shaders$prefetchShadowSelection(CallbackInfo callback) {
+    ShadowRenderer.prefetchSelection((LevelRenderer) (Object) this, viewArea);
   }
 
   @Inject(method = "executeClassicTransparency", at = @At("HEAD"))

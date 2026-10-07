@@ -65,6 +65,11 @@ public final class WaterMaskTest {
                   () -> "Water mask projection",
                   GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_COPY_DST,
                   64);
+          var packUniforms =
+              device.createBuffer(
+                  () -> "Water mask pack uniforms",
+                  GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_COPY_DST,
+                  translated.uniforms().byteSize());
           var readback =
               device.createBuffer(
                   () -> "Water mask readback",
@@ -80,6 +85,14 @@ public final class WaterMaskTest {
         var encoder = device.createCommandEncoder();
         encoder.clearColorTexture(targets.color(0).texture, new Vector4f(0, 1, 0, 1));
         encoder.clearDepthTexture(targets.depth(0).texture, 1);
+        var packValues = translated.uniforms().allocate();
+        translated
+            .uniforms()
+            .putFloats(packValues, "sl_CameraEffect", new Matrix4f().get(new float[16]));
+        translated
+            .uniforms()
+            .putFloats(packValues, "sl_CameraEffectInverse", new Matrix4f().get(new float[16]));
+        encoder.writeToBuffer(packUniforms.slice(), packValues);
         ByteBuffer positions = buffer(36);
         for (float value : new float[] {-1, -1, .75f, 3, -1, .75f, -1, 3, .75f})
           positions.putFloat(value);
@@ -94,6 +107,7 @@ public final class WaterMaskTest {
         encoder.writeToBuffer(projection.slice(), proj);
         try (var pass = encoder.createRenderPass(descriptor)) {
           pass.setPipeline(pipeline.compiled());
+          pass.setUniform(UniformLayout.BLOCK_NAME, packUniforms);
           pass.setUniform("DynamicTransforms", transforms);
           pass.setUniform("Projection", projection);
           pass.setVertexBuffer(0, vertices.slice());

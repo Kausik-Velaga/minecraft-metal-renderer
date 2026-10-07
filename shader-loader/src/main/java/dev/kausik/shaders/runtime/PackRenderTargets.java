@@ -6,8 +6,12 @@ import com.mojang.renderpearl.api.commands.RenderPassDescriptor;
 import com.mojang.renderpearl.api.device.GpuDevice;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalDouble;
+import java.util.Set;
 import org.joml.Vector4f;
 import org.joml.Vector4fc;
 
@@ -22,11 +26,14 @@ public final class PackRenderTargets implements AutoCloseable {
   private static final BufferSpec DEFAULT =
       new BufferSpec(GpuFormat.RGBA8_UNORM, true, null, false);
   private final GpuDevice device;
+  private final boolean lazyClears;
   private final Map<Integer, BufferSpec> specifications;
+  private final Map<PackTexture, Vector4fc> pendingColors = new HashMap<>();
+  private final Set<PackTexture> pendingDepths = new HashSet<>();
   private final Map<Integer, Pair> colors = new HashMap<>();
   private final List<PackTexture> owned = new ArrayList<>();
   private final PackTexture[] depths = new PackTexture[3];
-  private final PackTexture mergedDepth;
+  private PackTexture mergedDepth;
   private final PackTexture[] shadowDepths = new PackTexture[2];
   private final Map<Integer, PackTexture> shadowColors = new HashMap<>();
   public final int width, height, shadowSize;
@@ -38,9 +45,26 @@ public final class PackRenderTargets implements AutoCloseable {
       int width,
       int height,
       int shadowSize) {
+    this(
+        device,
+        specifications,
+        width,
+        height,
+        shadowSize,
+        Boolean.getBoolean("minecraftShaders.lazyTargetClears"));
+  }
+
+  PackRenderTargets(
+      GpuDevice device,
+      Map<Integer, BufferSpec> specifications,
+      int width,
+      int height,
+      int shadowSize,
+      boolean lazyClears) {
     if (width < 1 || height < 1 || shadowSize < 1)
       throw new IllegalArgumentException("Invalid target size");
     this.device = device;
+    this.lazyClears = lazyClears;
     this.specifications = Map.copyOf(specifications);
     this.width = width;
     this.height = height;
@@ -113,7 +137,11 @@ public final class PackRenderTargets implements AutoCloseable {
   }
 
   void commitMergedDepth() {
-    copy(mergedDepth, depths[0], width, height);
+    // Every consumer asks for the current depth view when binding. Rotate ownership instead of
+    // copying the entire merged image back to the old scene image (both are otherwise identical).
+    PackTexture previousScene = depths[0];
+    depths[0] = mergedDepth;
+    mergedDepth = previousScene;
   }
 
   public PackTexture shadowDepth(int index) {
@@ -138,12 +166,70 @@ public final class PackRenderTargets implements AutoCloseable {
     for (var entry : colors.entrySet()) {
       if (!specification(entry.getKey()).clear()) continue;
       // Only the readable side survives into geometry. Screen passes fully overwrite their outputs.
-      encoder.clearColorTexture(entry.getValue().read().texture, clearColor(entry.getKey()));
+      clearColor(encoder, entry.getValue().read(), clearColor(entry.getKey()));
     }
-    for (PackTexture depth : depths) encoder.clearDepthTexture(depth.texture, 1);
-    for (PackTexture depth : shadowDepths) encoder.clearDepthTexture(depth.texture, 1);
-    for (PackTexture color : shadowColors.values())
-      encoder.clearColorTexture(color.texture, new Vector4f(1));
+    for (PackTexture depth : depths) clearDepth(encoder, depth);
+    for (PackTexture depth : shadowDepths) clearDepth(encoder, depth);
+    for (PackTexture color : shadowColors.values()) clearColor(encoder, color, new Vector4f(1));
+  }
+
+  private void clearColor(CommandEncoder encoder, PackTexture texture, Vector4fc color) {
+    if (lazyClears) pendingColors.put(texture, new Vector4f(color));
+    else encoder.clearColorTexture(texture.texture, color);
+  }
+
+  private void clearDepth(CommandEncoder encoder, PackTexture texture) {
+    if (lazyClears) pendingDepths.add(texture);
+    else encoder.clearDepthTexture(texture.texture, 1);
+  }
+
+  /**
+   * Resolve a sampled/read source before any native pass opens, including before mip generation.
+   */
+  public void ensureDefined(PackTexture texture) {
+    Vector4fc color = pendingColors.remove(texture);
+    if (color != null) device.createCommandEncoder().clearColorTexture(texture.texture, color);
+    if (pendingDepths.remove(texture))
+      device.createCommandEncoder().clearDepthTexture(texture.texture, 1);
+  }
+
+  /** These checks do not allocate a late target or encode work inside an existing scene pass. */
+  public boolean needsColorDefinition(int index) {
+    Pair pair = colors.get(index);
+    return pair == null || pendingColors.containsKey(pair.read());
+  }
+
+  public boolean needsDepthDefinition(int index) {
+    return pendingDepths.contains(depths[index]);
+  }
+
+  public boolean needsShadowColorDefinition(int index) {
+    PackTexture texture = shadowColors.get(index);
+    return texture == null || pendingColors.containsKey(texture);
+  }
+
+  public boolean needsShadowDepthDefinition(int index) {
+    return pendingDepths.contains(shadowDepths[index]);
+  }
+
+  private Optional<Vector4fc> attachmentClear(PackTexture texture) {
+    Vector4fc color = pendingColors.remove(texture);
+    if (color == null) return Optional.empty();
+    // The attachment load action clears only level zero. Keep every other mip defined exactly
+    // as the eager all-level clear did; the graph has not proved these levels dead.
+    var encoder = device.createCommandEncoder();
+    for (int mip = 1; mip < texture.texture.getMipLevels(); mip++) {
+      try (var ignored =
+          encoder.createRenderPass(
+              () -> "Shader pack pending mip clear", texture.level(mip), Optional.of(color))) {
+        // A clear-only pass intentionally has no draw.
+      }
+    }
+    return Optional.of(color);
+  }
+
+  private OptionalDouble depthAttachmentClear(PackTexture texture) {
+    return pendingDepths.remove(texture) ? OptionalDouble.of(1) : OptionalDouble.empty();
   }
 
   /** Discard temporal images after a camera discontinuity, including targets with Clear=false. */
@@ -152,6 +238,8 @@ public final class PackRenderTargets implements AutoCloseable {
     CommandEncoder encoder = device.createCommandEncoder();
     for (var entry : colors.entrySet()) {
       Vector4fc clear = clearColor(entry.getKey());
+      pendingColors.remove(entry.getValue().read());
+      pendingColors.remove(entry.getValue().write());
       encoder.clearColorTexture(entry.getValue().read().texture, clear);
       encoder.clearColorTexture(entry.getValue().write().texture, clear);
     }
@@ -159,14 +247,31 @@ public final class PackRenderTargets implements AutoCloseable {
 
   public RenderPassDescriptor descriptor(
       String name, List<Integer> outputs, boolean screen, boolean shadow, boolean withDepth) {
+    return descriptor(name, outputs, screen, shadow, withDepth, 0);
+  }
+
+  public RenderPassDescriptor descriptor(
+      String name,
+      List<Integer> outputs,
+      boolean screen,
+      boolean shadow,
+      boolean withDepth,
+      int depthIndex) {
+    if (withDepth && (depthIndex < 0 || depthIndex >= depths.length))
+      throw new IllegalArgumentException("Depth attachment outside 0..2");
     RenderPassDescriptor.Builder result = RenderPassDescriptor.builder(() -> name);
     for (int output : outputs) {
       if (output < 0) result.withUnusedColorAttachment();
-      else
-        result.withColorAttachment(
-            (shadow ? shadowColor(output) : screen ? alternate(output) : color(output)).level(0));
+      else {
+        PackTexture target =
+            shadow ? shadowColor(output) : screen ? alternate(output) : color(output);
+        result.withColorAttachment(target.level(0), attachmentClear(target));
+      }
     }
-    if (withDepth) result.withDepthAttachment((shadow ? shadowDepths[0] : depths[0]).level(0));
+    if (withDepth) {
+      PackTexture target = shadow ? shadowDepths[0] : depths[depthIndex];
+      result.withDepthAttachment(target.level(0), depthAttachmentClear(target));
+    }
     return result.build();
   }
 
@@ -193,9 +298,16 @@ public final class PackRenderTargets implements AutoCloseable {
   }
 
   private void copy(PackTexture from, PackTexture to, int w, int h) {
+    // All callers copy an entire single-level depth texture. Its queued clear is now dead.
+    if (to.texture.getMipLevels() != 1
+        || w != to.texture.getWidth(0)
+        || h != to.texture.getHeight(0))
+      throw new IllegalStateException("Depth snapshot must overwrite the whole destination");
+    ensureDefined(from);
     device
         .createCommandEncoder()
         .copyTextureToTexture(from.texture, to.texture, 0, 0, 0, 0, 0, w, h);
+    pendingDepths.remove(to);
   }
 
   @Override
@@ -204,6 +316,8 @@ public final class PackRenderTargets implements AutoCloseable {
     owned.clear();
     colors.clear();
     shadowColors.clear();
+    pendingColors.clear();
+    pendingDepths.clear();
   }
 
   private static final class Pair {

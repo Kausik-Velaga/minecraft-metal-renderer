@@ -16,8 +16,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -41,6 +43,7 @@ public final class MetalShaderCompiler implements AutoCloseable {
     if (closed) throw new IllegalStateException("Shader compiler is closed");
     if (info.pushConstantsSize() < 0 || info.pushConstantsSize() > 128)
       throw new IllegalArgumentException("Invalid push constant size for " + info.name());
+    boolean scopedMath = MetalPipelineMath.consumeRelaxedFragment(info.name());
     List<Module> modules = new ArrayList<>();
     try {
       for (var shader : info.shaders()) modules.add(new Module(shader));
@@ -53,10 +56,27 @@ public final class MetalShaderCompiler implements AutoCloseable {
       }
       if (pushStages != 0 && info.pushConstantsSize() == 0)
         throw new IllegalArgumentException("Shader requires push constants: " + info.name());
-      String vertexMsl = translate(vertex, bindings, true);
-      String fragmentMsl = translate(fragment, bindings, true);
-      String fragmentWithoutDepthMsl =
-          fragment.writesDepth ? translate(fragment, bindings, false) : null;
+      // ICBs accept texture/sampler resources through argument buffers, not direct arguments.
+      // Slot 29 is reserved only for this optional path; a full uniform layout keeps the loop.
+      boolean arguments =
+          MetalNative.indirectCommandsEnabled(device)
+              && bindings.stream()
+                  .noneMatch(b -> b.kind() == Kind.UNIFORM_BUFFER && b.index() == 29);
+      String vertexMsl, fragmentMsl, fragmentWithoutDepthMsl;
+      try {
+        vertexMsl = translate(vertex, bindings, true, arguments);
+        fragmentMsl = translate(fragment, bindings, true, arguments);
+        fragmentWithoutDepthMsl =
+            fragment.writesDepth ? translate(fragment, bindings, false, arguments) : null;
+      } catch (RuntimeException failure) {
+        if (!arguments) throw failure;
+        arguments = false;
+        vertexMsl = translate(vertex, bindings, true, false);
+        fragmentMsl = translate(fragment, bindings, true, false);
+        fragmentWithoutDepthMsl =
+            fragment.writesDepth ? translate(fragment, bindings, false, false) : null;
+      }
+      int[] argumentResources = arguments ? argumentResources(bindings, modules) : new int[0];
       if (Boolean.getBoolean("minecraftMetal.dumpShaders"))
         dumpShaders(info.name(), vertexMsl, fragmentMsl);
       int[] attributes = new int[info.attribBindings().size() * 4];
@@ -80,8 +100,18 @@ public final class MetalShaderCompiler implements AutoCloseable {
       var depth = info.depthStencilState();
       long handle;
       try {
-        handle =
-            MetalNative.createPipelineWithDepthVariants(
+        if (scopedMath) {
+          handle = MetalNative.createPipelineWithMathPolicy(
+              device, info.name(), vertexMsl, fragmentMsl, fragmentWithoutDepthMsl,
+              attributes, layouts, colorTargets(info.colorTargetStates()),
+              depth == null ? -1 : MetalMappings.compare(depth.depthTest()),
+              depth != null && depth.writeDepth(), info.cull(),
+              info.polygonMode() == PolygonMode.WIREFRAME,
+              depth == null ? 0 : depth.depthBiasConstant(),
+              depth == null ? 0 : depth.depthBiasScaleFactor(), argumentResources,
+              fragment.relaxedMathEligible ? 1 : 0);
+        } else {
+          handle = MetalNative.createPipelineWithArgumentBuffers(
                 device,
                 info.name(),
                 vertexMsl,
@@ -95,7 +125,9 @@ public final class MetalShaderCompiler implements AutoCloseable {
                 info.cull(),
                 info.polygonMode() == PolygonMode.WIREFRAME,
                 depth == null ? 0 : depth.depthBiasConstant(),
-                depth == null ? 0 : depth.depthBiasScaleFactor());
+                depth == null ? 0 : depth.depthBiasScaleFactor(),
+                argumentResources);
+        }
       } catch (RuntimeException exception) {
         dumpShaders(info.name(), vertexMsl, fragmentMsl);
         throw new IllegalStateException(
@@ -107,6 +139,9 @@ public final class MetalShaderCompiler implements AutoCloseable {
       if (handle == 0)
         throw new IllegalStateException(
             "Native pipeline compilation returned no pipeline for " + info.name());
+      if (scopedMath)
+        MetalPipelineMath.record(
+            fragment.relaxedMathEligible, MetalNative.pipelineMathModes(handle)[1]);
       return new MetalRenderPipeline(info, handle, bindings, pushStages);
     } finally {
       modules.forEach(Module::close);
@@ -124,15 +159,17 @@ public final class MetalShaderCompiler implements AutoCloseable {
     return result;
   }
 
-  private String translate(Module module, List<Binding> bindings, boolean emitDepth) {
+  private String translate(
+      Module module, List<Binding> bindings, boolean emitDepth, boolean arguments) {
     return mslCache.computeIfAbsent(
-        new TranslationKey(module.spirvKey, module.stage, module.entryPoint, bindings, emitDepth),
+        new TranslationKey(
+            module.spirvKey, module.stage, module.entryPoint, bindings, emitDepth, arguments),
         ignored -> {
           // SPIRV-Cross mutates its IR while emitting MSL. A second depth variant must
           // start from fresh SPIR-V, or generated interface members can become corrupted.
           try (Module translation = new Module(module.shader)) {
-            translation.bindResources(bindings);
-            return translation.compile(emitDepth);
+            translation.bindResources(bindings, arguments);
+            return translation.compile(emitDepth, arguments);
           }
         });
   }
@@ -191,7 +228,7 @@ public final class MetalShaderCompiler implements AutoCloseable {
         result.set(
             resource.binding,
             new Binding(
-                binding.stageMask() | module.stageMask(),
+                binding.stageMask() | (resource.active() ? module.stageMask() : 0),
                 binding.index(),
                 binding.kind(),
                 binding.gpuFormat(),
@@ -199,6 +236,25 @@ public final class MetalShaderCompiler implements AutoCloseable {
       }
     }
     return List.copyOf(result);
+  }
+
+  private static int[] argumentResources(List<Binding> bindings, List<Module> modules) {
+    // Keep every declared entry in the argument encoder's layout. Only residency and CPU
+    // binding stages are narrowed; inactive entries cannot shift later texture/sampler IDs.
+    int[] declaredStages = new int[bindings.size()];
+    for (Module module : modules)
+      for (Resource resource : module.resources)
+        declaredStages[resource.binding()] |= module.stageMask();
+    var result = new ArrayList<Integer>();
+    for (int i = 0; i < bindings.size(); i++) {
+      Binding binding = bindings.get(i);
+      if (binding.kind() == Kind.UNIFORM_BUFFER || declaredStages[i] == 0) continue;
+      result.add(declaredStages[i]);
+      result.add(binding.stageMask());
+      result.add(binding.index());
+      result.add(binding.kind() == Kind.TEXTURE ? 1 : 0);
+    }
+    return result.stream().mapToInt(Integer::intValue).toArray();
   }
 
   private static int[] colorTargets(List<ColorTargetState> targets) {
@@ -247,9 +303,21 @@ public final class MetalShaderCompiler implements AutoCloseable {
   }
 
   private record TranslationKey(
-      String spirv, int stage, String entryPoint, List<Binding> bindings, boolean emitDepth) {}
+      String spirv,
+      int stage,
+      String entryPoint,
+      List<Binding> bindings,
+      boolean emitDepth,
+      boolean arguments) {}
 
-  private record Resource(int binding, int descriptorSet, String name, int type, int dimension) {}
+  private record Resource(
+      int id,
+      int binding,
+      int descriptorSet,
+      String name,
+      int type,
+      int dimension,
+      boolean active) {}
 
   private static final class Module implements AutoCloseable {
     private long context;
@@ -259,6 +327,7 @@ public final class MetalShaderCompiler implements AutoCloseable {
     private final BackendRenderPipeline.CreateInfo.Shader shader;
     private final String entryPoint;
     private final String spirvKey;
+    private final boolean relaxedMathEligible;
     private boolean hasPushConstants;
     private boolean writesDepth;
     private final List<Resource> resources = new ArrayList<>();
@@ -273,6 +342,7 @@ public final class MetalShaderCompiler implements AutoCloseable {
       if (data.length == 0 || data.length % 4 != 0)
         throw new IllegalArgumentException("Invalid SPIR-V for " + shader.name());
       spirvKey = Base64.getEncoder().encodeToString(data);
+      relaxedMathEligible = SpirvMathPolicy.permitsRelaxedFragment(data);
       ByteBuffer bytes = MemoryUtil.memAlloc(data.length).order(ByteOrder.nativeOrder());
       bytes.put(data).flip();
       try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -294,6 +364,7 @@ public final class MetalShaderCompiler implements AutoCloseable {
           check(spvc_compiler_rename_entry_point(compiler, entryPoint, "main", stage));
         check(spvc_compiler_create_shader_resources(compiler, result));
         reflected = result.get(0);
+        Set<Integer> activeResources = activeResources();
         for (int type :
             new int[] {SPVC_RESOURCE_TYPE_UNIFORM_BUFFER, SPVC_RESOURCE_TYPE_SAMPLED_IMAGE}) {
           for (var resource : reflect(type)) {
@@ -304,12 +375,14 @@ public final class MetalShaderCompiler implements AutoCloseable {
                     : -1;
             resources.add(
                 new Resource(
+                    resource.id(),
                     spvc_compiler_get_decoration(compiler, resource.id(), DECORATION_BINDING),
                     spvc_compiler_get_decoration(
                         compiler, resource.id(), DECORATION_DESCRIPTOR_SET),
                     resource.nameString(),
                     type,
-                    dimension));
+                    dimension,
+                    activeResources == null || activeResources.contains(resource.id())));
           }
         }
         hasPushConstants = !reflect(SPVC_RESOURCE_TYPE_PUSH_CONSTANT).isEmpty();
@@ -333,10 +406,14 @@ public final class MetalShaderCompiler implements AutoCloseable {
     }
 
     private List<SpvcReflectedResource> reflect(int type) {
+      return reflect(reflected, type);
+    }
+
+    private List<SpvcReflectedResource> reflect(long resources, int type) {
       try (MemoryStack stack = MemoryStack.stackPush()) {
         PointerBuffer pointer = stack.callocPointer(1);
         PointerBuffer count = stack.callocPointer(1);
-        check(spvc_resources_get_resource_list_for_type(reflected, type, pointer, count));
+        check(spvc_resources_get_resource_list_for_type(resources, type, pointer, count));
         List<SpvcReflectedResource> result = new ArrayList<>();
         if (count.get(0) != 0) {
           var list = SpvcReflectedResource.create(pointer.get(0), (int) count.get(0));
@@ -346,18 +423,55 @@ public final class MetalShaderCompiler implements AutoCloseable {
       }
     }
 
-    private void bindResources(List<Binding> bindings) {
+    private Set<Integer> activeResources() {
       try (MemoryStack stack = MemoryStack.stackPush()) {
+        PointerBuffer result = stack.callocPointer(1);
+        if (spvc_compiler_get_active_interface_variables(compiler, result) != SPVC_SUCCESS
+            || result.get(0) == 0) return null;
+        long active = result.get(0);
+        if (spvc_compiler_create_shader_resources_for_active_variables(compiler, result, active)
+                != SPVC_SUCCESS
+            || result.get(0) == 0) return null;
+        long activeReflection = result.get(0);
+        Set<Integer> declared = new HashSet<>(), live = new HashSet<>();
+        for (int type :
+            new int[] {SPVC_RESOURCE_TYPE_UNIFORM_BUFFER, SPVC_RESOURCE_TYPE_SAMPLED_IMAGE}) {
+          for (var resource : reflect(type)) declared.add(resource.id());
+          for (var resource : reflect(activeReflection, type)) live.add(resource.id());
+        }
+        // An unexpected reflection result never licenses dropping a dependency. Inactive
+        // resources remain declared in MSL, including when the active set is empty.
+        return declared.containsAll(live) ? live : null;
+      } catch (RuntimeException uncertain) {
+        return null;
+      }
+    }
+
+    private void bindResources(List<Binding> bindings, boolean arguments) {
+      try (MemoryStack stack = MemoryStack.stackPush()) {
+        if (arguments) {
+          check(spvc_compiler_msl_add_discrete_descriptor_set(compiler, 0));
+          var argumentBinding =
+              SpvcMslResourceBinding.calloc(stack)
+                  .stage(stage)
+                  .desc_set(1)
+                  .binding(SPVC_MSL_ARGUMENT_BUFFER_BINDING)
+                  .msl_buffer(29);
+          check(spvc_compiler_msl_add_resource_binding(compiler, argumentBinding));
+        }
         for (Resource resource : resources) {
           Binding target = bindings.get(resource.binding);
+          boolean indirect = arguments && target.kind() != Kind.UNIFORM_BUFFER;
+          if (indirect)
+            spvc_compiler_set_decoration(compiler, resource.id, DECORATION_DESCRIPTOR_SET, 1);
           var binding =
               SpvcMslResourceBinding.calloc(stack)
                   .stage(stage)
-                  .desc_set(resource.descriptorSet)
+                  .desc_set(indirect ? 1 : resource.descriptorSet)
                   .binding(resource.binding)
                   .msl_buffer(target.index())
                   .msl_texture(target.index())
-                  .msl_sampler(target.index());
+                  .msl_sampler(indirect ? 128 + target.index() : target.index());
           check(spvc_compiler_msl_add_resource_binding(compiler, binding));
         }
         if (hasPushConstants) {
@@ -372,12 +486,22 @@ public final class MetalShaderCompiler implements AutoCloseable {
       }
     }
 
-    private String compile(boolean emitDepth) {
+    private String compile(boolean emitDepth, boolean arguments) {
       try (MemoryStack stack = MemoryStack.stackPush()) {
         PointerBuffer pointer = stack.callocPointer(1);
         check(spvc_compiler_create_compiler_options(compiler, pointer));
         long options = pointer.get(0);
+        // MSL 2.1+ preserves SPIR-V Invariant position decorations as [[position, invariant]].
+        // Native library compilation enables preserveInvariance for those marked outputs.
         check(spvc_compiler_options_set_uint(options, SPVC_COMPILER_OPTION_MSL_VERSION, 20300));
+        check(
+            spvc_compiler_options_set_bool(
+                options, SPVC_COMPILER_OPTION_MSL_ARGUMENT_BUFFERS, arguments));
+        check(
+            spvc_compiler_options_set_bool(
+                options,
+                SPVC_COMPILER_OPTION_MSL_FORCE_ACTIVE_ARGUMENT_BUFFER_RESOURCES,
+                arguments));
         check(
             spvc_compiler_options_set_uint(
                 options, SPVC_COMPILER_OPTION_MSL_PLATFORM, SPVC_MSL_PLATFORM_MACOS));

@@ -6,11 +6,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +42,7 @@ public final class ShaderPack {
   private final Map<String, byte[]> files;
   private final Set<String> directories;
   private final ShaderOptions options;
+  private final String contentFingerprint;
 
   private ShaderPack(Path location, Map<String, byte[]> files, Set<String> directories)
       throws ShaderPackException {
@@ -46,6 +50,31 @@ public final class ShaderPack {
     this.files = Collections.unmodifiableMap(new TreeMap<>(files));
     this.directories = Set.copyOf(directories);
     this.options = ShaderOptions.discover(this.files);
+    this.contentFingerprint = fingerprint(this.files);
+  }
+
+  /** Canonical raw snapshot bytes, independent of archive name, ordering or compression. */
+  private static String fingerprint(Map<String, byte[]> files) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      digest.update("MinecraftShaderLoader-PackSnapshot-v1\0".getBytes(StandardCharsets.UTF_8));
+      fingerprintLength(digest, files.size(), 4);
+      for (var entry : files.entrySet()) {
+        byte[] name = entry.getKey().getBytes(StandardCharsets.UTF_8);
+        fingerprintLength(digest, name.length, 4);
+        digest.update(name);
+        fingerprintLength(digest, entry.getValue().length, 8);
+        digest.update(entry.getValue());
+      }
+      return HexFormat.of().formatHex(digest.digest());
+    } catch (NoSuchAlgorithmException impossible) {
+      throw new AssertionError("Java requires SHA-256", impossible);
+    }
+  }
+
+  private static void fingerprintLength(MessageDigest digest, long value, int bytes) {
+    for (int shift = (bytes - 1) * 8; shift >= 0; shift -= 8)
+      digest.update((byte) (value >>> shift));
   }
 
   public static ShaderPack load(Path location) throws IOException {
@@ -171,6 +200,11 @@ public final class ShaderPack {
 
   public Set<String> files() {
     return files.keySet();
+  }
+
+  /** Computed once from the immutable loaded snapshot; this never reads the pack from disk. */
+  public String contentFingerprint() {
+    return contentFingerprint;
   }
 
   public boolean contains(String path) throws ShaderPackException {

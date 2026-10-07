@@ -1,0 +1,98 @@
+[
+  {
+    "label": "release-022-canopy",
+    "minecraftVersion": "26.3",
+    "loadedMods": [
+      "fabricloader 0.19.5",
+      "java 26",
+      "minecraft 26.3",
+      "minecraft_metal 0.2.2",
+      "minecraft_scene_optimizer 0.1.0",
+      "minecraft_shader_benchmark 1.0.0",
+      "minecraft_shader_loader 0.1.3",
+      "mixinextras 0.5.5"
+    ],
+    "packagedInstallation": true,
+    "shaderLoaderInstalled": true,
+    "sceneOptimizerInstalled": true,
+    "fabricApiInstalled": false,
+    "selectedPack": true,
+    "packSha256": "017c8e6ba5eba636f6e62fcbd4080dfaaf5af049dbb08ec0c03abb4da141cdf8",
+    "nativeExecutionDelta": {
+      "submittedBuffers": 357,
+      "completedBuffers": 357,
+      "timedBuffers": 357,
+      "gpuSpanNanosSum": 2544375936,
+      "uploadRingAcquires": 357,
+      "uploadRingAcquireNanos": 26054,
+      "drawableAcquires": 357,
+      "drawableAcquireNanos": 646523472,
+      "failedBuffers": 0,
+      "unavailableGpuTimes": 0,
+      "uploadRingBlockedAcquires": 0,
+      "drawableTimeouts": 0
+    },
+    "materialAtlasAtStart": {
+      "resourceOverrides": 0,
+      "bytes": 22347776,
+      "mappedSprites": 50,
+      "skippedMasks": 0,
+      "generations": 1
+    },
+    "materialAtlasAtEnd": {
+      "resourceOverrides": 0,
+      "bytes": 22347776,
+      "mappedSprites": 50,
+      "skippedMasks": 0,
+      "generations": 1
+    }
+  },
+  {
+    "label": "release-022-solstice",
+    "minecraftVersion": "26.3",
+    "loadedMods": [
+      "fabricloader 0.19.5",
+      "java 26",
+      "minecraft 26.3",
+      "minecraft_metal 0.2.2",
+      "minecraft_scene_optimizer 0.1.0",
+      "minecraft_shader_benchmark 1.0.0",
+      "minecraft_shader_loader 0.1.3",
+      "mixinextras 0.5.5"
+    ],
+    "packagedInstallation": true,
+    "shaderLoaderInstalled": true,
+    "sceneOptimizerInstalled": true,
+    "fabricApiInstalled": false,
+    "selectedPack": true,
+    "packSha256": "6e6362151541c45ac5cb75833c8a1ab52431b0d7694597df612fbccb7112b4b6",
+    "nativeExecutionDelta": {
+      "submittedBuffers": 359,
+      "completedBuffers": 359,
+      "timedBuffers": 359,
+      "gpuSpanNanosSum": 1949113655,
+      "uploadRingAcquires": 359,
+      "uploadRingAcquireNanos": 37927,
+      "drawableAcquires": 359,
+      "drawableAcquireNanos": 1039827203,
+      "failedBuffers": 0,
+      "unavailableGpuTimes": 0,
+      "uploadRingBlockedAcquires": 0,
+      "drawableTimeouts": 0
+    },
+    "materialAtlasAtStart": {
+      "mappedSprites": 0,
+      "skippedMasks": 0,
+      "generations": 0,
+      "resourceOverrides": 0,
+      "bytes": 0
+    },
+    "materialAtlasAtEnd": {
+      "mappedSprites": 0,
+      "skippedMasks": 0,
+      "generations": 0,
+      "resourceOverrides": 0,
+      "bytes": 0
+    }
+  }
+]

@@ -21,12 +21,58 @@ public final class PackDepthMergeTest {
     RenderSystem.initRenderer(device);
     try (var merge = new PackDepthMerge(device)) {
       verifyDepths(device, merge);
+      verifyDepthRotation(device, merge);
       verifyHistoryReset(device);
       System.out.println(
           "PASS: late hand depth merges preserve all three depth meanings; history resets both"
               + " color sides");
     } finally {
       RenderSystem.shutdownRenderer();
+    }
+  }
+
+  private static void verifyDepthRotation(FrontendGpuDevice device, PackDepthMerge merge) {
+    try (var targets = new PackRenderTargets(device, Map.of(), 1, 1, 1);
+        var readback =
+            device.createBuffer(
+                () -> "Depth rotation readback",
+                GpuBuffer.USAGE_COPY_DST | GpuBuffer.USAGE_MAP_READ,
+                24)) {
+      for (int frame = 0; frame < 4; frame++) {
+        var encoder = device.createCommandEncoder();
+        targets.beginFrame(new Vector4f());
+        for (int index = 0; index < 3; index++) {
+          if (targets.depth(index) == targets.depth((index + 1) % 3))
+            throw new AssertionError("Depth roles alias after frame " + frame);
+          encoder.copyTextureToBuffer(
+              targets.depth(index).texture, readback, index * 4L, () -> {}, 0);
+        }
+        float scene = .8f - frame * .15f, hand = .2f + frame * .15f, opaque = .95f;
+        float[] depths = {scene, hand, opaque};
+        for (int index = 0; index < 3; index++)
+          encoder.writeToTexture(
+              targets.depth(index).texture, floats(new float[] {depths[index]}), 0, 0, 0, 0, 1, 1);
+        var oldScene = targets.depth(0);
+        merge.merge(targets);
+        if (targets.depth(0) == oldScene)
+          throw new AssertionError("Merged depth did not rotate ownership");
+        for (int index = 0; index < 3; index++)
+          encoder.copyTextureToBuffer(
+              targets.depth(index).texture, readback, 12 + index * 4L, () -> {}, 0);
+        try (var fence = encoder.createFence()) {
+          encoder.submit();
+          if (!fence.awaitCompletion(5_000_000_000L))
+            throw new AssertionError("Depth rotation timeout");
+        }
+        try (var mapped = readback.map(true, false)) {
+          ByteBuffer data = mapped.data().order(ByteOrder.nativeOrder());
+          for (int index = 0; index < 3; index++)
+            same(data.getFloat(index * 4), 1, "rotated clear", frame);
+          same(data.getFloat(12), Math.min(scene, hand), "rotated merged depth", frame);
+          same(data.getFloat(16), hand, "rotated hand depth", frame);
+          same(data.getFloat(20), opaque, "rotated opaque depth", frame);
+        }
+      }
     }
   }
 

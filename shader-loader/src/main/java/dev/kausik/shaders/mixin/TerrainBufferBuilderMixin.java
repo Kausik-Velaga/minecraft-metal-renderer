@@ -44,7 +44,8 @@ public abstract class TerrainBufferBuilderMixin {
       float ny,
       float nz,
       CallbackInfo callback) {
-    if (format != TerrainShaderGeometry.FORMAT) return;
+    TerrainShaderGeometry.Layout layout = TerrainShaderGeometry.layoutFor(format);
+    if (layout == null) return;
     long pointer = beginVertex();
     MemoryUtil.memPutFloat(pointer, x);
     MemoryUtil.memPutFloat(pointer + 4, y);
@@ -56,8 +57,8 @@ public abstract class TerrainBufferBuilderMixin {
     MemoryUtil.memPutShort(pointer + 24, (short) (lightCoords & 0xffff));
     MemoryUtil.memPutShort(pointer + 26, (short) (lightCoords >>> 16));
     TerrainVertexWriter.putNormal(pointer + TerrainShaderGeometry.NORMAL_OFFSET, nx, ny, nz);
-    TerrainVertexWriter.writeMetadata(pointer, x, y, z);
-    if ((vertices & 3) == 0) TerrainVertexWriter.finishQuad(pointer);
+    TerrainVertexWriter.writeMetadata(pointer, x, y, z, layout);
+    if ((vertices & 3) == 0) TerrainVertexWriter.finishQuad(pointer, layout);
     callback.cancel();
   }
 }

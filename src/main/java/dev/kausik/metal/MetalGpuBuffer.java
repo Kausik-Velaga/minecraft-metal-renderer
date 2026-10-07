@@ -8,6 +8,7 @@ import java.nio.ByteOrder;
 public class MetalGpuBuffer extends com.mojang.renderpearl.backend.common.BaseGpuBuffer {
   private long handle;
   private int mappings;
+  private long publicationDevice;
 
   /** Non-owning subclasses provide their own handle and lifetime, e.g. transient arena views. */
   MetalGpuBuffer(int usage, long size) {
@@ -20,6 +21,13 @@ public class MetalGpuBuffer extends com.mojang.renderpearl.backend.common.BaseGp
     boolean shared = (usage & (USAGE_MAP_READ | USAGE_MAP_WRITE | USAGE_HINT_CLIENT_STORAGE)) != 0;
     handle = MetalNative.createBuffer(device.handle(), size, shared, label);
     if (handle == 0) throw new IllegalStateException("Metal buffer allocation failed: " + label);
+    // Only CPU-owned indirect inputs have a trustworthy map-close publication point. Buffers
+    // accepting GPU copies and transient mixed-use arenas retain the ordinary indirect path.
+    if ((usage & (USAGE_MAP_WRITE | USAGE_INDIRECT_PARAMETERS | USAGE_COPY_DST))
+            == (USAGE_MAP_WRITE | USAGE_INDIRECT_PARAMETERS)
+        && MetalNative.enableCpuIndirectSnapshots(device.handle(), handle)) {
+      publicationDevice = device.handle();
+    }
   }
 
   public long handle() {
@@ -57,7 +65,10 @@ public class MetalGpuBuffer extends com.mojang.renderpearl.backend.common.BaseGp
       throw new IllegalArgumentException("Mapped view exceeds Java's 2 GB limit");
     // As in Blaze3D's Vulkan backend, the caller must fence GPU writes before CPU reads.
     ByteBuffer bytes =
-        MetalNative.mapBuffer(nativeHandle, offset, length).order(ByteOrder.nativeOrder());
+        (publicationDevice != 0 && write
+                ? MetalNative.mapCpuIndirectBuffer(nativeHandle, offset, length)
+                : MetalNative.mapBuffer(nativeHandle, offset, length))
+            .order(ByteOrder.nativeOrder());
     if (!write) bytes = bytes.asReadOnlyBuffer().order(ByteOrder.nativeOrder());
     mappings++;
     return new GpuBufferSlice.MappedView(
@@ -71,6 +82,10 @@ public class MetalGpuBuffer extends com.mojang.renderpearl.backend.common.BaseGp
             if (!closed) {
               closed = true;
               mappings--;
+              if (publicationDevice != 0 && write) {
+                MetalNative.publishCpuIndirectBuffer(
+                    publicationDevice, nativeHandle, offset, length);
+              }
             }
           }
         });

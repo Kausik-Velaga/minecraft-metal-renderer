@@ -108,7 +108,7 @@ final class MetalCommandEncoder implements CommandEncoderBackend, AutoCloseable 
         descriptor.renderArea() != null
             ? descriptor.renderArea()
             : new RenderPass.RenderArea(0, 0, width, height);
-    MetalNative.beginRenderPass(
+    MetalNative.beginRenderPassWithDiscard(
         h(),
         descriptor.label().get(),
         colors,
@@ -118,7 +118,8 @@ final class MetalCommandEncoder implements CommandEncoderBackend, AutoCloseable 
         area.x(),
         area.y(),
         area.width(),
-        area.height());
+        area.height(),
+        MetalPassHints.consumeDiscardColors(descriptor));
     inPass = true;
     return new MetalRenderPass(device, descriptor, width, height);
   }

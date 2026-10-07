@@ -4,6 +4,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 using namespace metal;
 #define NATIVE(name) Java_dev_kausik_metal_MetalNative_##name
@@ -35,6 +38,9 @@ JNIEXPORT jlong JNICALL NATIVE(createSurface)(JNIEnv* env, jclass, jlong device,
         auto& d = get<Device>(device);
         auto surface = std::make_unique<Surface>();
         Surface* s = surface.get();
+        s->executionStats = d.executionStats;
+        const char* offscreen = std::getenv("MINECRAFT_METAL_OFFSCREEN_PRESENT");
+        s->offscreenPresent = offscreen && std::strcmp(offscreen, "1") == 0;
         CAMetalLayer* layer = (__bridge CAMetalLayer*)reinterpret_cast<void*>(metalLayer);
         if (![layer isKindOfClass:[CAMetalLayer class]]) throw std::invalid_argument("SDL Metal view did not expose a CAMetalLayer");
         id<MTLDevice> gpu = d.object;
@@ -62,33 +68,82 @@ JNIEXPORT void JNICALL NATIVE(configureSurface)(JNIEnv* env, jclass, jlong surfa
             layer.displaySyncEnabled = vsync;
             [CATransaction commit];
         });
+        if (s.offscreenPresent && (s.offscreenTargets.empty()
+                || s.offscreenTargets[0].width != static_cast<NSUInteger>(width)
+                || s.offscreenTargets[0].height != static_cast<NSUInteger>(height))) {
+            MTLTextureDescriptor* desc = [MTLTextureDescriptor
+                texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
+                width:width height:height mipmapped:NO];
+            desc.storageMode = MTLStorageModePrivate;
+            desc.hazardTrackingMode = MTLHazardTrackingModeTracked;
+            desc.usage = MTLTextureUsageRenderTarget;
+            std::vector<id<MTLTexture>> replacements;
+            for (NSUInteger i = 0; i < 3; ++i) {
+                id<MTLTexture> target = [layer.device newTextureWithDescriptor:desc];
+                if (!target) throw std::runtime_error("Could not allocate offscreen presentation diagnostic target");
+                target.label = [NSString stringWithFormat:@"Offscreen presentation diagnostic %lu", i];
+                replacements.push_back(target);
+            }
+            // Submitted command buffers retain replaced targets until their GPU work completes.
+            // Tracked hazards order later reuse of a ring slot without display-pacing waits.
+            s.offscreenTargets = std::move(replacements);
+            s.offscreenIndex = 0;
+            s.offscreenAcquired = false;
+            fprintf(stderr, "[Minecraft Metal] OFFSCREEN PRESENT DIAGNOSTIC active: %d x %d, "
+                "BGRA8Unorm, 3 private targets; final compositing retained, "
+                "CAMetalLayer acquire/present bypassed. Throughput is not visible FPS.\n", width, height);
+        }
     });
 }
 JNIEXPORT void JNICALL NATIVE(acquireSurface)(JNIEnv* env, jclass, jlong surface) {
     guarded(env, [&] {
         auto& s = get<Surface>(surface);
-        if (!s.drawable) s.drawable = [s.layer nextDrawable];
+        if (s.offscreenPresent) {
+            if (s.offscreenTargets.empty())
+                throw std::runtime_error("Offscreen presentation diagnostic surface is not configured");
+            s.offscreenAcquired = true;
+            return;
+        }
+        if (!s.drawable) {
+            uint64_t start = monotonicNanos();
+            s.drawable = [s.layer nextDrawable];
+            s.executionStats->drawableAcquireNanos.fetch_add(monotonicNanos() - start, std::memory_order_relaxed);
+            s.executionStats->drawableAcquires.fetch_add(1, std::memory_order_relaxed);
+            if (!s.drawable) s.executionStats->drawableTimeouts.fetch_add(1, std::memory_order_relaxed);
+        }
         if (!s.drawable) throw std::runtime_error("Timed out acquiring an SDL Metal drawable");
     });
 }
 JNIEXPORT void JNICALL NATIVE(blitSurface)(JNIEnv* env, jclass, jlong device, jlong surface, jlong textureView) {
     guarded(env, [&] {
         auto& d = get<Device>(device); auto& s = get<Surface>(surface);
-        if (!s.drawable) return;
+        if (s.offscreenPresent ? !s.offscreenAcquired : !s.drawable) return;
         auto source = get<Texture>(textureView).object;
-        auto target = s.drawable.texture;
+        id<MTLTexture> target = s.offscreenPresent
+            ? s.offscreenTargets[s.offscreenIndex] : s.drawable.texture;
         preparePresentation(d);
-        beginPass(d, @"Present to CAMetalLayer", {target}, {NAN,0,0,0}, nil, NAN, 0,0,target.width,target.height);
+        // The fullscreen triangle overwrites every pixel; do not load a recycled drawable.
+        beginPass(d, s.offscreenPresent ? @"Offscreen presentation diagnostic" : @"Present to CAMetalLayer",
+            {target}, {0,0,0,0}, nil, NAN, 0,0,target.width,target.height);
         [d.renderEncoder setRenderPipelineState:d.presentationPipeline];
         [d.renderEncoder setCullMode:MTLCullModeNone];
         [d.renderEncoder setFragmentTexture:source atIndex:0];
         [d.renderEncoder setFragmentSamplerState:d.presentationSampler atIndex:0];
         [d.renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+        d.renderEncoderHasDrawn = true;
         d.endRender();
-        [d.commands() presentDrawable:s.drawable];
+        if (!s.offscreenPresent) [d.commands() presentDrawable:s.drawable];
     });
 }
 JNIEXPORT void JNICALL NATIVE(presentSurface)(JNIEnv* env, jclass, jlong surface) {
-    guarded(env, [&] { get<Surface>(surface).drawable = nil; });
+    guarded(env, [&] {
+        auto& s = get<Surface>(surface);
+        if (s.offscreenPresent) {
+            if (s.offscreenAcquired) {
+                s.offscreenAcquired = false;
+                s.offscreenIndex = (s.offscreenIndex + 1) % s.offscreenTargets.size();
+            }
+        } else s.drawable = nil;
+    });
 }
 }

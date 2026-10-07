@@ -3,9 +3,11 @@ package dev.kausik.metal;
 import com.mojang.renderpearl.api.textures.AddressMode;
 import com.mojang.renderpearl.api.textures.FilterMode;
 import com.mojang.renderpearl.api.textures.GpuSampler;
+import java.util.Optional;
 import java.util.OptionalDouble;
 
 public final class MetalGpuSampler implements GpuSampler {
+  private final MetalDevice device;
   private final AddressMode addressU;
   private final AddressMode addressV;
   private final FilterMode minFilter;
@@ -22,6 +24,19 @@ public final class MetalGpuSampler implements GpuSampler {
       FilterMode magFilter,
       int maxAnisotropy,
       OptionalDouble maxLod) {
+    this(device, addressU, addressV, minFilter, magFilter, maxAnisotropy, maxLod, false);
+  }
+
+  private MetalGpuSampler(
+      MetalDevice device,
+      AddressMode addressU,
+      AddressMode addressV,
+      FilterMode minFilter,
+      FilterMode magFilter,
+      int maxAnisotropy,
+      OptionalDouble maxLod,
+      boolean comparison) {
+    this.device = device;
     this.addressU = addressU;
     this.addressV = addressV;
     this.minFilter = minFilter;
@@ -29,15 +44,39 @@ public final class MetalGpuSampler implements GpuSampler {
     this.maxAnisotropy = maxAnisotropy;
     this.maxLod = maxLod;
     handle =
-        MetalNative.createSampler(
-            device.handle(),
-            addressU == AddressMode.REPEAT,
-            addressV == AddressMode.REPEAT,
-            minFilter == FilterMode.LINEAR,
-            magFilter == FilterMode.LINEAR,
-            maxAnisotropy,
-            maxLod.orElse(Double.POSITIVE_INFINITY));
+        comparison
+            ? MetalNative.createComparisonSampler(
+                device.handle(),
+                addressU == AddressMode.REPEAT,
+                addressV == AddressMode.REPEAT,
+                minFilter == FilterMode.LINEAR,
+                magFilter == FilterMode.LINEAR,
+                maxAnisotropy,
+                maxLod.orElse(Double.POSITIVE_INFINITY))
+            : MetalNative.createSampler(
+                device.handle(),
+                addressU == AddressMode.REPEAT,
+                addressV == AddressMode.REPEAT,
+                minFilter == FilterMode.LINEAR,
+                magFilter == FilterMode.LINEAR,
+                maxAnisotropy,
+                maxLod.orElse(Double.POSITIVE_INFINITY));
     if (handle == 0) throw new IllegalStateException("Metal sampler allocation failed");
+  }
+
+  /** Creates an independently owned LEQUAL depth-comparison sampler with the same filtering. */
+  public static Optional<GpuSampler> comparisonVariant(GpuSampler source) {
+    if (!(source instanceof MetalGpuSampler metal) || metal.isClosed()) return Optional.empty();
+    return Optional.of(
+        new MetalGpuSampler(
+            metal.device,
+            metal.addressU,
+            metal.addressV,
+            metal.minFilter,
+            metal.magFilter,
+            metal.maxAnisotropy,
+            metal.maxLod,
+            true));
   }
 
   public long handle() {

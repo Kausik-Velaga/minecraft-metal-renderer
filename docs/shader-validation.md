@@ -1,10 +1,121 @@
 # Shader-loader validation
 
-Release pair: Minecraft Metal **0.2.1** and Minecraft Shader Loader **0.1.0**.
+Original release pair: Minecraft Metal **0.2.1** and Minecraft Shader Loader **0.1.0**.
+The loader **0.1.1** and **0.1.2** regression fixes below continue to use renderer **0.2.1**.
 
 Validation host: Apple M3 Pro, macOS 26.5.2, Minecraft 26.3, Fabric Loader 0.19.5, and ARM64 Homebrew
 Java 26.0.1. The supplied pack is BSL 10.1.8. Its default settings are used unless a test explicitly
 checks rejection of an unsupported option. Pack source and assets are not stored in this repository.
+
+## Renderer 0.2.2 / loader 0.1.3 performance work — validation pending
+
+The [performance investigation](shader-performance.md) records preliminary 3456×2104 natural-forest
+measurements, GPU stage timings, hardware shadow-comparison checks, and the blocking pipeline-cache
+compilation fix. The candidate patch has focused checks; final build/gameplay/packaged validation
+and remaining benchmark controls are pending. Historical release results below remain unchanged.
+
+## Loader 0.1.2 world-text regression
+
+A multiplayer report exposed a missing adapter for `text_see_through`, used for world labels such
+as player name tags. Minecraft 26.3 deliberately omits lightmap coordinates from see-through text
+and renders its vertex color without scene-lightmap multiplication. The loader now supplies the
+corresponding full-bright legacy light coordinates for that format; ordinary text keeps its actual
+per-vertex light coordinates.
+
+Grayscale glyph atlases also need Minecraft's red-channel coverage convention. Their albedo fetches
+now replicate red into RGBA before the pack's shading and alpha test, scoped to grayscale text.
+Bitmap glyphs and unrelated textures retain their original channels. See-through draws retain
+their original depth behavior, and world labels remain excluded from shadow casting.
+
+The expanded pipeline audit also identified missing first-person fire/block overlay inputs,
+standalone glint routing and texture-transform issues, and additive lightning/dragon-ray effects
+being treated as shadow casters. Those formats now have explicit adapters or shadow exclusions.
+Fused glint materials retain their base-material route and shadow; their missing separate glint
+layer remains a documented visual limitation, distinct from standalone glint support.
+
+The smoke test now enumerates registered pipeline **objects**, because several item/glint variants
+share the same identifier. It checks applicable scene, shadow, block-entity, and hand contexts in
+each dimension using the runtime's actual routing, fallback, alpha-test, and texture adapters.
+GUI, texture-update, presentation, and disabled Improved Transparency passes are explicitly listed
+as exclusions. The gameplay fixture uses real entity name labels and a text display, with an opaque
+wall added and removed. Minecraft's built-in uniform font uploads RGBA glyphs; separate GPU readback
+checks exercise actual R8 grayscale coverage across the corresponding text formats.
+
+Final GPU validation on October 3, 2026 passed **583 BSL pipeline compilations**. The catalog contains
+195 distinct registered pipeline objects, of which 77 participate in the supported world/hand
+rendering paths. Those yield 181 context variants before dimension filtering: 180 tested routes in
+the Overworld, 137 in the Nether, and 178 in the End. Raw pack entry points and the optional cloud
+adapter make up the remaining compilations. The focused GPU test also passed eight font formats,
+two first-person overlays, and standalone glint, including channel coverage, light coordinates,
+alpha rejection, normals, and texture transforms. [Artifact identities](evidence/shader-0.1.2/artifacts.json)
+record the packaged renderer 0.2.1 and loader 0.1.2.
+
+The disposable gameplay scene passed the original leaf-breaking and sunrise regressions, then
+executed both ordinary and see-through world-text pipelines with real named entities and text-display
+backgrounds. The [occluded-label capture](evidence/shader-0.1.2/13a-bsl-nametags-occluded-uniform-background.png)
+and [unoccluded capture](evidence/shader-0.1.2/13b-bsl-nametags-visible-uniform-background.png) were inspected.
+It also submitted an actual GLINT-tagged enchanted held-item variant and
+[first-person fire](evidence/shader-0.1.2/13d-bsl-first-person-fire-enchanted-sword.png) without an adapter
+failure. The enchanted-item check proves draw coverage, not fused-glint visual parity. These are
+local reproductions of the client rendering paths, not a connection to the user's multiplayer server.
+
+Natural-terrain day/night and Nether/End/Overworld travel passed again. The exact production JARs
+then passed the packaged installation check without Fabric API, and the capture was inspected:
+[final validation log](evidence/shader-0.1.2/final-validation.log),
+[completed build/check phase](evidence/shader-0.1.2/build-check.log),
+[packaged report](evidence/shader-0.1.2/packaged-bsl.json), and
+[packaged capture](evidence/shader-0.1.2/packaged-bsl.png).
+The short installation timing sample is not a comparative performance benchmark. Loader 0.1.2 was
+installed into the closed Metal + BSL profile with 0.1.1 backed up; renderer, options, and pack
+selection were verified unchanged.
+
+## Loader 0.1.1 regression fixes
+
+A user report exposed three gaps in the original validation scenes:
+
+- Breaking a leaf in survival submitted Minecraft's block-damage decal to the shadow pass. The
+  decal does not have the terrain attributes expected by BSL's shadow program, causing a fatal
+  adapter error. Damage decals are now excluded from shadow casting; the normal damage overlay
+  and the underlying block's shadow remain.
+- Minecraft 26.3 includes walking bob, hurt tilt, and nausea in its projection matrix. BSL's
+  optimized depth reconstruction assumes a symmetric perspective projection. The loader now
+  separates the camera effect into model-view, preserving rasterized positions and temporal
+  reprojection while supplying the matrix convention expected by the pack. Shadow terrain uses
+  the original camera rotation so the effect is not applied twice.
+- Minecraft's terrain sampler uses linear magnification with coordinate adjustments in vanilla's
+  texture-sampling shader. Ordinary legacy pack sampling does not include those adjustments, which
+  blurred nearby block texels even while stationary. Block-atlas albedo now uses nearest
+  magnification while retaining the original minification, mip filtering, anisotropy, addressing,
+  and LOD limit. Pack post-processing and non-atlas textures keep their original sampling.
+
+The new regressions exercise survival attack input through visible cracks and server-confirmed
+leaf removal, sunrise walking with camera bob enabled, CPU and actual Metal camera reconstruction,
+and magnified block texels with fractional mip-level sampling. BSL's default anti-aliasing and
+effects remain enabled. Results from the original 0.1.0 performance measurements below are
+historical; they are not new measurements of this patch.
+
+The renderer build, loader build/check, all **123 BSL Metal pipeline variants**, and both client
+gameplay suites passed on October 3, 2026. The real sunrise walk used nonzero camera effects in
+three captured walking phases; the largest reconstructed-position error was **0.0000797 blocks**.
+The survival fixture rendered the real damage pipeline, rejected shadow damage draws, and observed
+both client and server removal of just the targeted leaf. Natural day, night, Nether, End, and
+return travel also completed. The new close-up and leaf captures were visually inspected.
+
+Evidence: [renderer checks](evidence/shader-0.1.1/renderer-build.log),
+[loader and GPU checks](evidence/shader-0.1.1/loader-build-gpu.log),
+[gameplay log](evidence/shader-0.1.1/gameplay.log),
+[leaf cracks](evidence/shader-0.1.1/12-bsl-leaf-breaking-cracks.png),
+[leaf removed](evidence/shader-0.1.1/13-bsl-leaf-removed-caster-retained.png),
+[sunrise while walking](evidence/shader-0.1.1/12c-bsl-sunrise-walking-phase2.png), and
+[stationary close-up afterward](evidence/shader-0.1.1/12e-bsl-sunrise-standing-after-walk.png).
+
+The exact 0.2.1 / 0.1.1 production JARs also passed the packaged BSL installation check without
+Fabric API; its screenshot was inspected. See the [report](evidence/shader-0.1.1/packaged-bsl.json),
+[log](evidence/shader-0.1.1/packaged.log), [capture](evidence/shader-0.1.1/packaged-bsl.png), and
+[artifact hashes](evidence/shader-0.1.1/artifacts.json). Another Minecraft instance was running during
+this short installation check, so its timing samples are not suitable for performance comparisons.
+The new loader was installed in the user's existing Metal + BSL profile after verifying that profile
+was closed; the old loader was backed up. The running separate vanilla profile was not interrupted.
 
 ## GPU and translation checks
 

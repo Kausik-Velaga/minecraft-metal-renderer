@@ -81,6 +81,13 @@ public final class MetalGameplayTest implements FabricClientGameTest {
       context.waitTicks(2);
       screenshot(context, "03-particles");
 
+      // The profiler pie chart draws indexed TRIANGLE_FAN geometry, which Metal must expand.
+      context.runOnClient(client -> client.getDebugOverlay().toggleProfilerChart());
+      context.waitTicks(20);
+      screenshot(context, "18-profiler-chart");
+      context.runOnClient(client -> client.debugEntries.setOverlayVisible(false));
+      context.waitTicks(2);
+
       context.getInput().pressKey(options -> options.keyInventory);
       context.waitTicks(5);
       screenshot(context, "04-inventory");
@@ -106,7 +113,7 @@ public final class MetalGameplayTest implements FabricClientGameTest {
     screenshot(context, "07-return-to-menu");
     complete(
         "flat terrain, transparency off/on/off, boat water-mask passes, water, glass, entities,"
-            + " particles, inventory, resize, indoor lighting");
+            + " particles, profiler chart, inventory, resize, indoor lighting");
   }
 
   private static void runTransparency(

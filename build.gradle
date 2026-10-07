@@ -45,6 +45,17 @@ tasks.register('nativeSmokeTest', JavaExec) {
     environment 'MTL_DEBUG_LAYER', '1'
 }
 
+// Indexed fan expansion must also synchronize through tracked resources before any timestamps.
+tasks.register('trackedNativeSmokeTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.kausik.metal.NativeSmokeTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    environment 'MTL_DEBUG_LAYER', '1'
+    environment 'MINECRAFT_METAL_TRACKED_HAZARDS', '1'
+}
+check { dependsOn 'trackedNativeSmokeTest' }
+
 tasks.register('icbSmokeTest', JavaExec) {
     dependsOn tasks.named('testClasses')
     classpath = sourceSets.test.runtimeClasspath

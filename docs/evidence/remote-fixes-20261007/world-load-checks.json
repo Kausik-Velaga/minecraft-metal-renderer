@@ -1,0 +1,69 @@
+{
+  "purpose": "Correctness checks for issue #6; not performance comparisons",
+  "runs": [
+    {
+      "label": "bsl-distance19-2",
+      "backend": "Metal",
+      "device": "Apple M3 Pro",
+      "minecraftVersion": "26.3",
+      "packSha256": "36b0a50ff7918bf10e9422c401d93779f9d0088a26acea975b435243f96930b5",
+      "framebufferWidth": 3456,
+      "framebufferHeight": 2168,
+      "viewDistanceChunks": 19,
+      "simulationDistanceChunks": 12,
+      "warmupSeconds": 5.0,
+      "requestedMeasurementSeconds": 30.0,
+      "frameIntervals": {
+        "frames": 688,
+        "seconds": 30.033132833,
+        "meanFps": 22.90803306553604,
+        "meanMs": 43.6528093502907,
+        "p50Ms": 43.262583,
+        "p95Ms": 47.0605,
+        "p99Ms": 48.432875,
+        "maxMs": 61.719959
+      },
+      "terrainMeshingPendingAtEnd": false,
+      "performanceComparable": false,
+      "artifacts": {
+        "minecraft-metal-renderer-0.2.2.jar": "d9d4b85665a5ff7eb321e0fc1a305c1afaca128ed1829a019cd8e71dac51b6b2",
+        "minecraft-shader-loader-0.1.3-benchmark-probe.jar": "f3561e53f9db24566a84fe944b2525e3f8762b13ea570d30bfedca0cc46d43da",
+        "minecraft-shader-loader-0.1.3.jar": "d58b7b6b58b1f4df7a4bb0d3aa96d2e8118edc298a388b050ceb8cc5eaa408ca"
+      },
+      "fixtureSha256": "00bc9eb48393766103840e10e422f0690a57dd57bdb847b94ef8ae4f636d9d82",
+      "sourcesSha256": "188acb301fbb4d055a60a0ead488961f56cb91f565290b9d0ba9ce39defec293"
+    },
+    {
+      "label": "bsl-distance19-3",
+      "backend": "Metal",
+      "device": "Apple M3 Pro",
+      "minecraftVersion": "26.3",
+      "packSha256": "36b0a50ff7918bf10e9422c401d93779f9d0088a26acea975b435243f96930b5",
+      "framebufferWidth": 3456,
+      "framebufferHeight": 2168,
+      "viewDistanceChunks": 19,
+      "simulationDistanceChunks": 12,
+      "warmupSeconds": 5.0,
+      "requestedMeasurementSeconds": 30.0,
+      "frameIntervals": {
+        "frames": 688,
+        "seconds": 30.033028459,
+        "meanFps": 22.908112677988257,
+        "meanMs": 43.65265764389535,
+        "p50Ms": 43.415708,
+        "p95Ms": 45.998791,
+        "p99Ms": 47.606959,
+        "maxMs": 51.403625
+      },
+      "terrainMeshingPendingAtEnd": false,
+      "performanceComparable": false,
+      "artifacts": {
+        "minecraft-metal-renderer-0.2.2.jar": "d9d4b85665a5ff7eb321e0fc1a305c1afaca128ed1829a019cd8e71dac51b6b2",
+        "minecraft-shader-loader-0.1.3-benchmark-probe.jar": "f3561e53f9db24566a84fe944b2525e3f8762b13ea570d30bfedca0cc46d43da",
+        "minecraft-shader-loader-0.1.3.jar": "d58b7b6b58b1f4df7a4bb0d3aa96d2e8118edc298a388b050ceb8cc5eaa408ca"
+      },
+      "fixtureSha256": "00bc9eb48393766103840e10e422f0690a57dd57bdb847b94ef8ae4f636d9d82",
+      "sourcesSha256": "188acb301fbb4d055a60a0ead488961f56cb91f565290b9d0ba9ce39defec293"
+    }
+  ]
+}

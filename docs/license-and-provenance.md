@@ -1,10 +1,9 @@
 # License and provenance review
 
-The opening review below is historical. The current three-mod source tree
-distributes the original Solstice pack with its own copy of the project MIT license. The distribution
-script allowlists only three production JARs and this pack, excluding
-external research checkouts, BSL, generated third-party shader dumps, Spark and
-Minecraft content. This packaging check is not a new similarity audit or legal
+The opening review below is historical. The current distribution script
+allowlists only three production JARs, configuration and documentation, excluding
+all shader packs, external research checkouts, generated third-party shader
+dumps, Spark and Minecraft content. This packaging check is not a new similarity audit or legal
 clearance; the scope qualifications and subsequent research notes still apply.
 
 Review date: **October 2, 2026**. Source baseline: [`406a75eb1c9b033fb7628843762ef2a833de8fb0`](https://github.com/Kausik-Velaga/minecraft-metal-renderer/tree/406a75eb1c9b033fb7628843762ef2a833de8fb0), version **0.2.0**. This review adds documentation and upstream license notices; it does not change the implementation.

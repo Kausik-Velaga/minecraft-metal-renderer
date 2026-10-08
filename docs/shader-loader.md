@@ -1,7 +1,8 @@
 # Shader packs with Minecraft Metal
 
 Minecraft Shader Loader is an optional Fabric mod. Minecraft Metal runs without it;
-shader packs require both mods. The maintained original pack is **Solstice 0.1.0** for Minecraft Java **26.3** and Apple Silicon.
+shader packs require both mods. The loader targets Minecraft Java **26.3** and Apple Silicon.
+Current source builds contain no shader packs and leave shaders off by default.
 Scene Optimizer 0.1.0 is an optional third mod for scene preparation.
 
 ## Install and select a pack
@@ -9,16 +10,17 @@ Scene Optimizer 0.1.0 is an optional third mod for scene preparation.
 1. Use a separate Minecraft 26.3 Fabric profile. See the [installation guide](installation.md).
 2. Put `minecraft-metal-renderer-0.2.2.jar`, `minecraft-shader-loader-0.1.3.jar`, and optionally
    `minecraft-scene-optimizer-0.1.0.jar` in `mods`. Remove older copies. Fabric API is not required.
-3. Put `Solstice-0.1.0.zip`, intact, in `shaderpacks`.
+3. Obtain a compatible pack separately and put its intact ZIP or folder in `shaderpacks`.
 4. Create or edit `config/minecraft-shader-loader.properties` in that profile:
 
    ```properties
-   pack=Solstice-0.1.0.zip
-   profile=BALANCED
+   pack=YourPack.zip
    ```
 
-   Remove incompatible `option.*` entries when switching packs. The old v0.2.2 suite
-   selected the retired Canopy pack; update its configuration to Solstice.
+   Replace `YourPack.zip` with the actual filename. Remove old `profile` and `option.*` entries
+   when switching packs, then choose only options supported by the new pack. Leave `pack=`
+   empty for shaders off. The old v0.2.2 suite selected the retired Canopy pack; clear that
+   setting when removing it. Canopy and Solstice are no longer maintained or bundled in source builds.
 5. Start Minecraft and enter a world. The first load compiles the pack's programs.
 
 BSL 10.1.8 was the initial compatibility target and has historical validation records.

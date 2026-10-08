@@ -1,5 +1,9 @@
 # Optional performance settings for 0.2.2
 
+These historical measurements used the now-retired Canopy and Solstice packs.
+Current source builds bundle no packs and start with shaders off; these results
+do not describe that default installation.
+
 The release preserves conservative runtime defaults. The Canopy 0.2.0 result of
 113.64 FPS at 3456×2168 used the tuned three-mod configuration below on an M3 Pro,
 with 16-chunk view distance, 12-chunk simulation distance, 30 seconds of warmup

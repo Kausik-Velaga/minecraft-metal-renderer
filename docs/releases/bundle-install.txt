@@ -9,24 +9,22 @@ Included:
   Minecraft Metal 0.2.2 — native graphics backend
   Minecraft Shader Loader 0.1.3 — pack loading and rendering
   Minecraft Scene Optimizer 0.1.0 — scene preparation
-  Solstice 0.1.0 — lighter lighting, water, shadows and bloom
 
 INSTALL
 1. Close Minecraft. Create a separate Fabric 26.3 profile with its own game
    directory.
-2. Extract the outer suite ZIP once. Keep the three JARs and Solstice ZIP
-   intact. Do not place the suite ZIP itself in mods.
+2. Extract the outer suite ZIP once. Keep the three JARs intact. Do not
+   place the suite ZIP itself in mods.
 3. Copy the three files from mods into the profile's mods folder. Remove
    older versions of these three mods; keep one copy of each.
-4. Copy Solstice-0.1.0.zip from shaderpacks into the profile's shaderpacks folder.
-5. For a fresh profile, copy config/minecraft-shader-loader.properties into
+4. For a fresh profile, copy config/minecraft-shader-loader.properties into
    the profile's config folder. On an existing profile, edit the existing
-   file instead of overwriting settings: set pack=Solstice-0.1.0.zip and
-   profile=BALANCED. Remove old option.* settings that the new pack lacks.
-6. Launch the Fabric profile. Metal and Solstice activate automatically.
+   file: set pack= (empty) and remove old profile and option.* entries.
+5. Launch the Fabric profile. Metal activates automatically; shaders start off.
+   No shader packs are included. Obtain a compatible pack separately to enable shaders.
 
 Change the pack and profile settings in the configuration file to select a
-different shader pack, then restart Minecraft. There is no shader selection screen yet.
+shader pack, then restart Minecraft. There is no shader selection screen yet.
 To use ordinary rendering, leave pack= empty or remove the shader loader.
 The scene optimizer is optional. Both companions require Minecraft Metal.
 
@@ -37,7 +35,7 @@ Performance depends on the scene, settings and device; frame-time spikes remain.
 
 No BSL, Minecraft game files, Mojang reference artwork, third-party mods,
 world saves, profiler, or account data are included.
-Our custom code, tests, shader packs and documentation are AI-generated.
+Our custom code, tests and documentation are AI-generated.
 The project's own licensable material is offered under MIT; see LICENSE
 and THIRD_PARTY_NOTICES.md. This is not an official Minecraft product.
 

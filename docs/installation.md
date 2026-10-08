@@ -6,7 +6,7 @@ This guide installs the experimental **0.2.2** release for **Minecraft Java 26.3
 
 ## Complete suite
 
-The [suite ZIP](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/download/v0.2.2/minecraft-metal-suite-0.2.2.zip) contains all three mods and Solstice, alongside the now-retired Canopy pack. Install only Solstice. Extract it once, copy its three intact JARs into `mods`, and `Solstice-0.1.0.zip` into `shaderpacks`. Set `pack=Solstice-0.1.0.zip` and `profile=BALANCED` in the existing shader-loader configuration and remove incompatible old `option.*` entries. Remove older copies of these mods before updating. The old bundled `INSTALL.txt` selects Canopy; use the Solstice settings above instead.
+The [suite ZIP](https://github.com/Kausik-Velaga/minecraft-metal-renderer/releases/download/v0.2.2/minecraft-metal-suite-0.2.2.zip) contains all three mods alongside the now-retired Canopy and Solstice packs. Extract it once and copy only its three intact JARs into `mods`. Set `pack=` (empty) in `config/minecraft-shader-loader.properties` and remove old `profile` and `option.*` entries to disable the retired packs. Remove older copies of these mods before updating. The old bundled `INSTALL.txt` selects Canopy; use the settings above instead. Current source builds include no shader packs.
 
 The steps below also support installing the renderer alone. For the companion mods and switching packs, see [shader setup](shader-loader.md). The suite does not change launcher JVM arguments; [optional performance settings](releases/performance-settings.md) reproduce the tuned benchmark configuration.
 

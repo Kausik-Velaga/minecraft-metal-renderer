@@ -2,18 +2,18 @@
 
 ## Current source packaging
 
-Build with `./gradlew --no-parallel build :shader-loader:solsticePack`, then use
+Build with `./gradlew --no-parallel build`, then use
 `python3 tools/package-release.py`. The allowlist contains three production JARs,
-one Solstice ZIP, the suite ZIP and SHA256SUMS. Solstice is selected by default.
+the suite ZIP and SHA256SUMS. No shader packs are bundled; shaders start off.
 Choose a new suite release version before publishing changed artifacts; do not
 replace an existing published version with this working tree.
 
 ## Historical October 7, 2026 suite release
 
 The GitHub `v0.2.2` prerelease distributes Minecraft Metal 0.2.2, Shader Loader
-0.1.3, Scene Optimizer 0.1.0, the retired Canopy 0.2.0 and Solstice 0.1.0.
+0.1.3, Scene Optimizer 0.1.0, the now-retired Canopy 0.2.0 and Solstice 0.1.0.
 That published download and its [release notes](releases/0.2.2.md) describe the
-historical build. Its configuration selected Canopy; current source selects Solstice.
+historical build. Its configuration selected Canopy; current source disables shaders by default.
 
 The registry entries below record the earlier 0.2.0 submissions. Their status
 has not been rechecked and these listings have not been updated by the GitHub

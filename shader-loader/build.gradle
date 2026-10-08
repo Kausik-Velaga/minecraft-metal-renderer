@@ -324,37 +324,6 @@ check { dependsOn 'lazyTargetClearsGpuTest' }
     }
 }
 
-// Original packs share the compiler and packaging path; third-party packs remain user-supplied.
-['solstice': 'Solstice'].each { id, title ->
-    tasks.register("${id}Pack", Zip) {
-        group = 'build'
-        archiveFileName = "${title}-0.1.0.zip"
-        destinationDirectory = layout.buildDirectory.dir('shaderpacks')
-        from rootProject.file("shaderpacks/${id}")
-        preserveFileTimestamps = false
-        reproducibleFileOrder = true
-    }
-    tasks.register("${id}ShaderSmokeTest", JavaExec) {
-        dependsOn tasks.named('testClasses'), tasks.named("${id}Pack")
-        classpath = sourceSets.test.runtimeClasspath
-        mainClass = 'dev.kausik.shaders.compile.PackShaderSmokeTest'
-        args rootProject.file("shaderpacks/${id}").absolutePath
-        jvmArgs '--enable-native-access=ALL-UNNAMED', '-DminecraftShaders.optimizeFragmentSpirv=true',
-            '-DminecraftShaders.optimizeVertexSpirv=true', '-DminecraftShaders.hardwareShadowComparison=true'
-        environment 'MTL_DEBUG_LAYER', '1'
-    }
-    check { dependsOn "${id}ShaderSmokeTest" }
-}
-
-tasks.register('solsticePackTest', JavaExec) {
-    dependsOn tasks.named('testClasses')
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'dev.kausik.shaders.runtime.SolsticePackTest'
-    args rootProject.file('shaderpacks/solstice').absolutePath
-    jvmArgs '--enable-native-access=ALL-UNNAMED'
-}
-check { dependsOn 'solsticePackTest', 'solsticeShaderSmokeTest' }
-
 tasks.register('materialPaletteTest', JavaExec) {
     dependsOn tasks.named('testClasses')
     classpath = sourceSets.test.runtimeClasspath

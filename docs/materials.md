@@ -1,8 +1,8 @@
 # Material assets and generated atlases
 
 The shader loader supports an optional material atlas for user-supplied packs.
-Solstice does not use it or allocate a companion atlas. Material recipes belong
-to the pack; the loader retains generic validation and generation support.
+Material recipes belong to the pack; the loader retains generic validation and
+generation support. Packs that do not request material data allocate no companion atlas.
 
 ## Ownership and preparation
 

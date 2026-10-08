@@ -14,8 +14,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--label', required=True)
     parser.add_argument('--fixture', required=True, type=Path)
-    parser.add_argument('--pack', type=Path, default=ROOT / 'shader-loader/build/shaderpacks/Solstice-0.1.0.zip')
-    parser.add_argument('--output', type=Path, default=ROOT / '.research/solstice')
+    parser.add_argument('--pack', required=True, type=Path, help='User-supplied shader pack ZIP or directory')
+    parser.add_argument('--output', type=Path, default=ROOT / '.research/shader-benchmarks')
     parser.add_argument('--warmup', type=int, default=5)
     parser.add_argument('--seconds', type=int, default=10)
     parser.add_argument('--action', choices=['static', 'forestWalk', 'cavernBreak'], default='static')
@@ -33,9 +33,8 @@ def main():
         parser.error('Label already exists; choose a fresh label')
     if not (args.fixture / 'level.dat').is_file():
         parser.error('Fixture must be a closed disposable Minecraft world')
-    for pack_id, title, version in [('solstice', 'Solstice', '0.1.0')]:
-        if args.pack.resolve() == ROOT / f'shader-loader/build/shaderpacks/{title}-{version}.zip':
-            subprocess.run(['./gradlew', '--no-parallel', f':shader-loader:{pack_id}Pack'], cwd=ROOT, check=True)
+    if not (args.pack.is_file() or args.pack.is_dir()):
+        parser.error('Shader pack must be an existing ZIP or directory')
     command = ['./gradlew', '--no-parallel', ':shader-loader:runPackagedOptimizedBsl']
     settings = {
         'shaderPack': str(args.pack.resolve()), 'benchmarkScene': 'natural',

@@ -46,11 +46,6 @@ public final class ShaderGameplayTest implements FabricClientGameTest {
           // The loader must select its compatible draw order without mutating the saved preference.
           client.options.improvedTransparency().set(true);
         });
-    if ("materials".equals(System.getProperty("minecraftShaders.testScenario"))) {
-      ShaderMaterialScenario.run(context);
-      complete("Material masks, atlas reload and steady-state reuse");
-      return;
-    }
     if ("natural".equals(System.getProperty("minecraftShaders.testScenario"))) {
       ShaderNaturalScenario.run(context);
       complete("Natural terrain, movement, night, Nether and End transitions");

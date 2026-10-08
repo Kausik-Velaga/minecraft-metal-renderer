@@ -1,10 +1,8 @@
 # License and provenance review
 
-The opening review below is historical. For the October 2026 three-mod suite,
-the original Canopy and Solstice packs are distributed with their own copies of
-the project MIT license. Material recipes contain our annotations and source
-hashes, not vanilla color images or Mojang's material maps. The distribution
-script allowlists only three production JARs and these two packs, excluding
+The opening review below is historical. The current three-mod source tree
+distributes the original Solstice pack with its own copy of the project MIT license. The distribution
+script allowlists only three production JARs and this pack, excluding
 external research checkouts, BSL, generated third-party shader dumps, Spark and
 Minecraft content. This packaging check is not a new similarity audit or legal
 clearance; the scope qualifications and subsequent research notes still apply.

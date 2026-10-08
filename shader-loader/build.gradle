@@ -325,10 +325,10 @@ check { dependsOn 'lazyTargetClearsGpuTest' }
 }
 
 // Original packs share the compiler and packaging path; third-party packs remain user-supplied.
-['solstice': 'Solstice', 'canopy': 'Canopy'].each { id, title ->
+['solstice': 'Solstice'].each { id, title ->
     tasks.register("${id}Pack", Zip) {
         group = 'build'
-        archiveFileName = "${title}-${id == 'canopy' ? '0.2.0' : '0.1.0'}.zip"
+        archiveFileName = "${title}-0.1.0.zip"
         destinationDirectory = layout.buildDirectory.dir('shaderpacks')
         from rootProject.file("shaderpacks/${id}")
         preserveFileTimestamps = false
@@ -355,45 +355,9 @@ tasks.register('solsticePackTest', JavaExec) {
 }
 check { dependsOn 'solsticePackTest', 'solsticeShaderSmokeTest' }
 
-tasks.register('canopyPackTest', JavaExec) {
-    dependsOn tasks.named('testClasses')
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'dev.kausik.shaders.runtime.CanopyPackTest'
-    args rootProject.file('shaderpacks/canopy').absolutePath
-    jvmArgs '--enable-native-access=ALL-UNNAMED'
-}
-check { dependsOn 'canopyPackTest' }
-
 tasks.register('materialPaletteTest', JavaExec) {
     dependsOn tasks.named('testClasses')
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'dev.kausik.shaders.runtime.MaterialPaletteTest'
-    args rootProject.file('shaderpacks/canopy/shaders/materials.json').absolutePath
 }
 check { dependsOn 'materialPaletteTest' }
-
-loom.runs {
-    clientMaterialGameTest {
-        inherit clientGameTest
-        name 'Shader Material Atlas Validation'
-        runDir 'build/run/clientMaterialGameTest'
-        vmArg '-DminecraftShaders.testScenario=materials'
-        vmArg '-Dmetal.enabled=true'
-        vmArg '-Xmx4G'
-        def selectedPack = providers.gradleProperty('shaderPack').orNull
-        if (selectedPack != null) vmArg "-DminecraftShaders.pack=${selectedPack}"
-        environmentVariable 'MTL_DEBUG_LAYER', '1'
-    }
-}
-tasks.named('runClientMaterialGameTest') {
-    def completionMarker = layout.buildDirectory.file('run/clientMaterialGameTest/shader-gametest-complete.txt')
-    doFirst {
-        if (!providers.gradleProperty('shaderPack').isPresent()) {
-            throw new GradleException('Supply -PshaderPack=/absolute/path/to/pack.zip')
-        }
-        completionMarker.get().asFile.delete()
-    }
-    doLast {
-        if (!completionMarker.get().asFile.isFile()) throw new GradleException('Material validation did not finish')
-    }
-}

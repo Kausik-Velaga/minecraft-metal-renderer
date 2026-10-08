@@ -1,8 +1,7 @@
 # Shader packs with Minecraft Metal
 
 Minecraft Shader Loader is an optional Fabric mod. Minecraft Metal runs without it;
-shader packs require both mods. The release includes our original **Canopy 0.2.0**
-and **Solstice 0.1.0** packs for Minecraft Java **26.3** and Apple Silicon.
+shader packs require both mods. The maintained original pack is **Solstice 0.1.0** for Minecraft Java **26.3** and Apple Silicon.
 Scene Optimizer 0.1.0 is an optional third mod for scene preparation.
 
 ## Install and select a pack
@@ -10,16 +9,16 @@ Scene Optimizer 0.1.0 is an optional third mod for scene preparation.
 1. Use a separate Minecraft 26.3 Fabric profile. See the [installation guide](installation.md).
 2. Put `minecraft-metal-renderer-0.2.2.jar`, `minecraft-shader-loader-0.1.3.jar`, and optionally
    `minecraft-scene-optimizer-0.1.0.jar` in `mods`. Remove older copies. Fabric API is not required.
-3. Put `Canopy-0.2.0.zip` and `Solstice-0.1.0.zip`, intact, in `shaderpacks`.
+3. Put `Solstice-0.1.0.zip`, intact, in `shaderpacks`.
 4. Create or edit `config/minecraft-shader-loader.properties` in that profile:
 
    ```properties
-   pack=Canopy-0.2.0.zip
+   pack=Solstice-0.1.0.zip
    profile=BALANCED
    ```
 
-   To select Solstice, use `pack=Solstice-0.1.0.zip`. Remove incompatible `option.*` entries
-   when switching packs. The suite ZIP includes a fresh-profile Canopy configuration.
+   Remove incompatible `option.*` entries when switching packs. The old v0.2.2 suite
+   selected the retired Canopy pack; update its configuration to Solstice.
 5. Start Minecraft and enter a world. The first load compiles the pack's programs.
 
 BSL 10.1.8 was the initial compatibility target and has historical validation records.
@@ -55,7 +54,7 @@ settings remain controlled by the pack.
 - BSL's host autofocus mode (`DOF=true`, `DOF_FOCUS_MODE=0`) is rejected because the loader does not
   supply its required center-depth history. The pack's depth-texture focus mode 1 can compile; the
   default configuration keeps depth of field off.
-- Canopy uses the loader's optional MERS material atlas; see [material maps and resource-pack
+- Packs can opt into the loader's MERS material atlas; see [material maps and resource-pack
   overrides](materials.md). Normal maps, nonuniform animated material masks and separate entity
   atlases remain unsupported. Legacy normal/specular samplers retain fallback/custom behavior.
   Arbitrary PBR resource packs and combinations with other rendering mods are unverified.

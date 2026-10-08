@@ -2,19 +2,27 @@ package dev.kausik.shaders.runtime;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 /**
  * Material semantics, source-identity guards and atlas borders survive generation and reduction.
  */
 public final class MaterialPaletteTest {
   public static void main(String[] args) throws Exception {
-    String source = Files.readString(Path.of(args[0]));
+    String source =
+        """
+        {"version":1,"presets":{
+          "stone":{"roughness": 1}, "iron":{"metalness": 0.9,"roughness":0.4}
+        },"sprites":{
+          "minecraft:block/gold_ore":{"mask":["sm","ms"],"legend":{"s":"stone","m":"iron"},
+            "albedoSha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+          "minecraft:block/redstone_lamp":{"preset":"stone"},
+          "minecraft:block/lava_still":{"preset": "iron"}
+        }}
+        """;
     var palette = MaterialPalette.parse(source);
-    require(palette.tiles().size() == 50, "Expected reviewed Canopy library");
+    require(palette.tiles().size() == 3, "Expected synthetic material fixture");
     var ore = palette.tiles().get("minecraft:block/gold_ore");
-    require(ore.rgba().length == 256 && !ore.uniform(), "Ore has a per-pixel mask");
+    require(ore.rgba().length == 4 && !ore.uniform(), "Ore has a per-pixel mask");
     int stone = 0, metal = 0;
     for (int pixel : ore.rgba()) {
       if ((pixel >>> 24) == 0) stone++;

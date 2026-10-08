@@ -33,7 +33,7 @@ def main():
         parser.error('Label already exists; choose a fresh label')
     if not (args.fixture / 'level.dat').is_file():
         parser.error('Fixture must be a closed disposable Minecraft world')
-    for pack_id, title, version in [('solstice', 'Solstice', '0.1.0'), ('canopy', 'Canopy', '0.2.0')]:
+    for pack_id, title, version in [('solstice', 'Solstice', '0.1.0')]:
         if args.pack.resolve() == ROOT / f'shader-loader/build/shaderpacks/{title}-{version}.zip':
             subprocess.run(['./gradlew', '--no-parallel', f':shader-loader:{pack_id}Pack'], cwd=ROOT, check=True)
     command = ['./gradlew', '--no-parallel', ':shader-loader:runPackagedOptimizedBsl']

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package only the three production mods and our two original shader packs."""
+"""Package only the three production mods and the original Solstice shader pack."""
 import hashlib
 import json
 from pathlib import Path
@@ -38,7 +38,7 @@ def main():
             if mod_id == 'minecraft_metal':
                 assert 'native/macos-arm64/libminecraft_metal.dylib' in archive.namelist()
         payload[f'mods/{jar.name}'] = jar.read_bytes()
-    for name in ('Canopy-0.2.0.zip', 'Solstice-0.1.0.zip'):
+    for name in ('Solstice-0.1.0.zip',):
         pack = ROOT / 'shader-loader/build/shaderpacks' / name
         with zipfile.ZipFile(pack) as archive:
             assert {'LICENSE', 'shaders/shaders.properties'} <= set(archive.namelist())
@@ -46,9 +46,8 @@ def main():
                            for n in archive.namelist())
         payload[f'shaderpacks/{name}'] = pack.read_bytes()
     payload['config/minecraft-shader-loader.properties'] = (
-        '# Canopy is selected by default. Restart Minecraft after changing packs.\n'
-        '# Alternative: pack=Solstice-0.1.0.zip\n'
-        'pack=Canopy-0.2.0.zip\nprofile=BALANCED\n').encode()
+        '# Solstice is selected by default. Restart Minecraft after changing packs.\n'
+        'pack=Solstice-0.1.0.zip\nprofile=BALANCED\n').encode()
     for name in ('LICENSE', 'THIRD_PARTY_NOTICES.md'):
         payload[name] = (ROOT / name).read_bytes()
     payload['INSTALL.txt'] = (ROOT / 'docs/releases/bundle-install.txt').read_bytes()
@@ -76,7 +75,7 @@ def main():
                             for path in sorted(assets)))
     expected = {path.name for path in assets} | {'SHA256SUMS'}
     assert {path.name for path in output.iterdir()} == expected, 'Unexpected release files'
-    print(f'Validated {len(mods)} mods, 2 original packs; bundle contains {len(payload)} files.')
+    print(f'Validated {len(mods)} mods, 1 original pack; bundle contains {len(payload)} files.')
     print(output)
 
 
